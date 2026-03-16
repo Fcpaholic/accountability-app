@@ -4,7 +4,7 @@ import {
   CHALLENGE_END,
   isToday,
   shortLabel,
-  CALORIE_TARGET,
+  getWeekCalorieTarget,
 } from '../lib/dates.js';
 import { getDayStatus, getDayKm } from '../lib/calculations.js';
 
@@ -156,7 +156,8 @@ function WeekSummaryStrip({ data, weeks }) {
       if (!d) continue;
       km += getDayKm(d);
       gym += d.gymSessions || 0;
-      if (d.calories !== null && d.calories <= CALORIE_TARGET) deficit++;
+      const { target: dayTarget } = getWeekCalorieTarget(day);
+      if (d.calories !== null && d.calories <= dayTarget) deficit++;
     }
     return { km: Math.round(km * 10) / 10, gym, deficit };
   };

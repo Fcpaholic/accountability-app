@@ -4,10 +4,9 @@ import {
   CHALLENGE_START,
   CHALLENGE_END,
   isToday,
-  isPast,
-  isFuture,
   getWeekStart,
   weekLabel,
+  getWeekCalorieTarget,
 } from '../lib/dates.js';
 import { getDayStatus } from '../lib/calculations.js';
 
@@ -61,13 +60,22 @@ export default function WeekProgress({ data, weekStats, weekDays, todayStr }) {
 
   const kmLeft = Math.max(0, WEEKLY_KM_TARGET - weekStats.km);
   const gymLeft = Math.max(0, WEEKLY_GYM_TARGET - weekStats.gymSessions);
+  const { target: calorieTarget, label: protocolLabel, isDietBreak } = getWeekCalorieTarget(todayStr);
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-5">
       {/* Header */}
-      <div>
-        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">This Week</h2>
-        <p className="text-sm font-medium text-zinc-300 mt-0.5">{weekLabel(ws)}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">This Week</h2>
+          <p className="text-sm font-medium text-zinc-300 mt-0.5">{weekLabel(ws)}</p>
+        </div>
+        <div className={`text-right text-xs px-2 py-1 rounded-md border ${
+          isDietBreak ? 'bg-violet-950 border-violet-800 text-violet-300' : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+        }`}>
+          <div className="font-semibold">{calorieTarget} kcal</div>
+          <div className="text-[10px] opacity-70">{protocolLabel}</div>
+        </div>
       </div>
 
       {/* Day indicators */}
@@ -140,8 +148,11 @@ export default function WeekProgress({ data, weekStats, weekDays, todayStr }) {
       <section className="space-y-1.5">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-1.5">
-            <span>🥗</span>
-            <span className="font-medium text-zinc-300">Deficit days</span>
+            <span>{isDietBreak ? '🧬' : '🥗'}</span>
+            <span className="font-medium text-zinc-300">
+              {isDietBreak ? 'Maintenance days' : 'Deficit days'}
+            </span>
+            <span className="text-xs text-zinc-600">≤{calorieTarget}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-white">{weekStats.deficitDays}</span>

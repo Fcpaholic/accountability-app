@@ -1,11 +1,11 @@
 import {
   WEEKLY_KM_TARGET,
   WEEKLY_GYM_TARGET,
-  CALORIE_TARGET,
   challengeDayNumber,
   challengeDaysRemaining,
   TOTAL_CHALLENGE_DAYS,
   weekLabel,
+  getWeekCalorieTarget,
 } from '../lib/dates.js';
 import {
   getWeeklySummaries,
@@ -37,10 +37,11 @@ export default function StatsView({ data, todayStr }) {
   let totalDeficitDays = 0;
   let totalLoggedDays = 0;
 
-  for (const [, d] of Object.entries(allDays)) {
+  for (const [dateStr, d] of Object.entries(allDays)) {
     totalKm += getDayKm(d);
     totalGym += d.gymSessions || 0;
-    if (d.calories !== null && d.calories <= CALORIE_TARGET) totalDeficitDays++;
+    const { target: dayTarget } = getWeekCalorieTarget(dateStr);
+    if (d.calories !== null && d.calories <= dayTarget) totalDeficitDays++;
     if (
       d.calories !== null ||
       (d.runs && d.runs.length > 0) ||

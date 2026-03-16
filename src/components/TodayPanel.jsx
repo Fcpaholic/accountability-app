@@ -7,7 +7,7 @@ import {
   removeRun,
   setWeight,
 } from '../lib/storage.js';
-import { CALORIE_TARGET, CALORIE_MAINTENANCE, shortLabel } from '../lib/dates.js';
+import { CALORIE_MAINTENANCE, shortLabel, getWeekCalorieTarget } from '../lib/dates.js';
 import { getCalorieStatus, getDayKm } from '../lib/calculations.js';
 
 const calorieStatusStyle = (status) => {
@@ -46,10 +46,14 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
   const runs = dayData.runs || [];
   const weight = dayData.weight;
 
-  const status = getCalorieStatus(calories);
+  const { target: calorieTarget, deficit, label: weekLabel, rationale, isDietBreak } =
+    getWeekCalorieTarget(todayStr);
+
+  const status = getCalorieStatus(calories, todayStr);
   const styles = calorieStatusStyle(status);
   const todayKm = getDayKm(dayData);
 
+  // Bar fills relative to maintenance (visual ceiling)
   const caloriePct = calories !== null
     ? Math.min((calories / CALORIE_MAINTENANCE) * 100, 100)
     : 0;
@@ -58,8 +62,8 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
     const num = Number(val);
     if (val === '' || isNaN(num) || num < 0) return;
     onRefresh(setCalories(todayStr, num));
-    const s = getCalorieStatus(num);
-    if (s === 'deficit') showToast('Deficit hit. Well done.', 'success');
+    const s = getCalorieStatus(num, todayStr);
+    if (s === 'deficit') showToast('Target hit. Well done.', 'success');
     else if (s === 'surplus') showToast('Over maintenance. Fix it tomorrow.', 'danger');
     else showToast('Calories logged.', 'info');
   };
@@ -93,9 +97,33 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-5">
       {/* Header */}
-      <div>
-        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Today</h2>
-        <p className="text-sm font-medium text-zinc-300 mt-0.5">{shortLabel(todayStr)}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Today</h2>
+          <p className="text-sm font-medium text-zinc-300 mt-0.5">{shortLabel(todayStr)}</p>
+        </div>
+      </div>
+
+      {/* ── Weekly Protocol Card ─────────── */}
+      <div className={`rounded-lg px-3 py-2.5 border text-xs space-y-0.5 ${
+        isDietBreak
+          ? 'bg-violet-950/60 border-violet-800'
+          : 'bg-zinc-800/60 border-zinc-700'
+      }`}>
+        <div className="flex items-center justify-between">
+          <span className={`font-semibold ${isDietBreak ? 'text-violet-300' : 'text-zinc-300'}`}>
+            {isDietBreak ? '🧬 ' : ''}{weekLabel}
+          </span>
+          <span className={`font-bold text-sm ${isDietBreak ? 'text-violet-400' : 'text-white'}`}>
+            {calorieTarget} kcal
+            {deficit > 0 && (
+              <span className="text-xs font-normal text-zinc-500 ml-1">−{deficit}</span>
+            )}
+          </span>
+        </div>
+        <p className={`leading-snug ${isDietBreak ? 'text-violet-400/80' : 'text-zinc-500'}`}>
+          {rationale}
+        </p>
       </div>
 
       {/* ── Calories ──────────────────────── */}
@@ -106,7 +134,7 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
           </label>
           {calories !== null && (
             <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${styles.badge}`}>
-              {status === 'deficit' && 'Deficit ✓'}
+              {status === 'deficit' && (isDietBreak ? 'Maintenance ✓' : 'Deficit ✓')}
               {status === 'warning' && 'Over target'}
               {status === 'surplus' && 'Surplus ✗'}
             </span>
@@ -124,7 +152,7 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
             className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-600 transition-colors"
           />
           <div className="flex flex-col justify-center text-right text-xs text-zinc-600 shrink-0">
-            <span>target: {CALORIE_TARGET}</span>
+            <span>target: {calorieTarget}</span>
             <span>maint: {CALORIE_MAINTENANCE}</span>
           </div>
         </div>
@@ -138,10 +166,10 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
         </div>
         {calories !== null && (
           <p className={`text-xs ${styles.text}`}>
-            {calories <= CALORIE_TARGET
-              ? `${CALORIE_TARGET - calories} kcal under target`
+            {calories <= calorieTarget
+              ? `${calorieTarget - calories} kcal under ${isDietBreak ? 'maintenance' : 'target'}`
               : calories < CALORIE_MAINTENANCE
-              ? `${calories - CALORIE_TARGET} kcal over target, ${CALORIE_MAINTENANCE - calories} under maintenance`
+              ? `${calories - calorieTarget} kcal over target · ${CALORIE_MAINTENANCE - calories} under maintenance`
               : `${calories - CALORIE_MAINTENANCE} kcal over maintenance`}
           </p>
         )}

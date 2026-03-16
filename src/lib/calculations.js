@@ -1,5 +1,4 @@
 import {
-  CALORIE_TARGET,
   CALORIE_MAINTENANCE,
   WEEKLY_KM_TARGET,
   WEEKLY_GYM_TARGET,
@@ -10,6 +9,7 @@ import {
   getAllChallengeDays,
   getWeekStart,
   getWeekDays,
+  getWeekCalorieTarget,
 } from './dates.js';
 
 // ─── Day helpers ────────────────────────────────────────────────────────────
@@ -17,9 +17,15 @@ import {
 export const getDayKm = (dayData) =>
   (dayData?.runs ?? []).reduce((s, km) => s + km, 0);
 
-export const getCalorieStatus = (calories) => {
+/**
+ * Returns calorie status for a given intake against the week-specific target.
+ * @param {number|null} calories
+ * @param {string} dateStr  YYYY-MM-DD — used to look up the week's target
+ */
+export const getCalorieStatus = (calories, dateStr) => {
   if (calories === null || calories === undefined) return 'unlogged';
-  if (calories <= CALORIE_TARGET) return 'deficit';
+  const target = dateStr ? getWeekCalorieTarget(dateStr).target : 1350;
+  if (calories <= target) return 'deficit';
   if (calories < CALORIE_MAINTENANCE) return 'warning';
   return 'surplus';
 };
@@ -38,9 +44,10 @@ export const getDayStatus = (dateStr, allDays) => {
 
   if (!d || !hasAny) return 'empty';
 
-  const inDeficit = d.calories !== null && d.calories <= CALORIE_TARGET;
+  const { target } = getWeekCalorieTarget(dateStr);
+  const inDeficit = d.calories !== null && d.calories <= target;
   const surplus = d.calories !== null && d.calories >= CALORIE_MAINTENANCE;
-  const overTarget = d.calories !== null && d.calories > CALORIE_TARGET;
+  const overTarget = d.calories !== null && d.calories > target;
   const hasActivity = (d.gymSessions || 0) > 0 || (d.runs && d.runs.length > 0);
 
   if (inDeficit && hasActivity) return 'perfect';
@@ -64,7 +71,8 @@ export const getWeekStats = (weekDays, allDays) => {
     if (!d) continue;
     km += getDayKm(d);
     gymSessions += d.gymSessions || 0;
-    if (d.calories !== null && d.calories <= CALORIE_TARGET) deficitDays++;
+    const { target: dayTarget } = getWeekCalorieTarget(day);
+    if (d.calories !== null && d.calories <= dayTarget) deficitDays++;
     if (
       d.calories !== null ||
       (d.runs && d.runs.length > 0) ||
@@ -151,7 +159,8 @@ export const getDisciplineScore = (data) => {
       possible += POINTS.deficit + POINTS.gym + POINTS.run;
       const d = allDays[day];
       if (!d) continue;
-      if (d.calories !== null && d.calories <= CALORIE_TARGET) earned += POINTS.deficit;
+      const { target: dayTarget } = getWeekCalorieTarget(day);
+      if (d.calories !== null && d.calories <= dayTarget) earned += POINTS.deficit;
       if (d.gymSessions && d.gymSessions > 0) earned += POINTS.gym;
       if (d.runs && d.runs.length > 0) earned += POINTS.run;
     }
@@ -169,7 +178,10 @@ export const getDisciplineScore = (data) => {
       );
       if (
         loggedInWeek.length === days.length &&
-        loggedInWeek.every((d) => allDays[d].calories <= CALORIE_TARGET)
+        loggedInWeek.every((d) => {
+          const { target } = getWeekCalorieTarget(d);
+          return allDays[d].calories <= target;
+        })
       ) {
         earned += POINTS.weekAllDeficit;
       }
@@ -195,7 +207,10 @@ export const getBadges = (data) => {
     const loggedDays = days.filter((d) => allDays[d] && allDays[d].calories !== null);
     const allDeficit =
       loggedDays.length === days.length &&
-      loggedDays.every((d) => allDays[d].calories <= CALORIE_TARGET);
+      loggedDays.every((d) => {
+        const { target } = getWeekCalorieTarget(d);
+        return allDays[d].calories <= target;
+      });
 
     if (stats.gymSessions >= WEEKLY_GYM_TARGET) {
       badges.push({
@@ -245,6 +260,7 @@ export const getMotivationMessage = (data, todayStr) => {
   const weekDaysToDate = getWeekDays(ws).filter((day) => day <= todayStr);
   const stats = getWeekStats(weekDaysToDate, allDays);
 
+  const { target: calorieTarget, isDietBreak } = getWeekCalorieTarget(todayStr);
   const dLeft = daysLeftInWeek(todayStr);
   const kmLeft = Math.max(0, WEEKLY_KM_TARGET - stats.km);
   const gymLeft = Math.max(0, WEEKLY_GYM_TARGET - stats.gymSessions);
@@ -256,10 +272,30 @@ export const getMotivationMessage = (data, todayStr) => {
     };
   }
 
-  if (calories !== null && calories >= CALORIE_MAINTENANCE) {
+  if (calories !== null && calories >= CALORIE_MAINTENANCE && !isDietBreak) {
     return {
       type: 'danger',
       msg: "Over maintenance. You failed today's nutrition. No excuses — make tomorrow count.",
+    };
+  }
+
+  // Diet break week — special messaging
+  if (isDietBreak) {
+    if (calories !== null && calories > CALORIE_MAINTENANCE) {
+      return {
+        type: 'danger',
+        msg: `Over maintenance on diet break week (${calories} kcal). Stay at exactly ${CALORIE_MAINTENANCE}. This is not a free pass.`,
+      };
+    }
+    if (calories !== null && calories <= CALORIE_MAINTENANCE) {
+      return {
+        type: 'success',
+        msg: `Diet break on track (${calories} kcal). Maintenance locked. Your metabolism is recovering — this pays off in weeks 4-5.`,
+      };
+    }
+    return {
+      type: 'info',
+      msg: `Diet break week. Target: ${CALORIE_MAINTENANCE} kcal exactly. Science at work — stay the course.`,
     };
   }
 
@@ -278,28 +314,28 @@ export const getMotivationMessage = (data, todayStr) => {
     };
   }
 
-  if (calories !== null && calories > CALORIE_TARGET && calories < CALORIE_MAINTENANCE) {
+  if (calories !== null && calories > calorieTarget && calories < CALORIE_MAINTENANCE) {
     return {
       type: 'warning',
-      msg: `${calories} kcal — over target but under maintenance. Close is not good enough.`,
+      msg: `${calories} kcal — over this week's target of ${calorieTarget}. Close is not good enough.`,
     };
   }
 
-  if (kmLeft === 0 && gymLeft === 0 && calories !== null && calories <= CALORIE_TARGET) {
+  if (kmLeft === 0 && gymLeft === 0 && calories !== null && calories <= calorieTarget) {
     return {
       type: 'success',
       msg: 'Weekly goals complete. Deficit locked. This is what discipline looks like.',
     };
   }
 
-  if (calories !== null && calories <= CALORIE_TARGET && gymSessions > 0) {
+  if (calories !== null && calories <= calorieTarget && gymSessions > 0) {
     return {
       type: 'success',
       msg: "Deficit hit. Gym done. That's the standard — repeat tomorrow.",
     };
   }
 
-  if (calories !== null && calories <= CALORIE_TARGET) {
+  if (calories !== null && calories <= calorieTarget) {
     return {
       type: 'info',
       msg: 'Deficit locked in. Still need the gym session. Get it done.',
