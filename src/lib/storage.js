@@ -17,7 +17,7 @@ export const getData = () => {
   }
 };
 
-const saveData = (data) => {
+export const saveData = (data) => {
   localStorage.setItem(KEY, JSON.stringify(data));
 };
 

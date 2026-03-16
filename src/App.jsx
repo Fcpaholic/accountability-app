@@ -1,12 +1,17 @@
-import { useState, useCallback } from 'react';
-import { getData } from './lib/storage.js';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { getData, saveData } from './lib/storage.js';
 import { today } from './lib/dates.js';
+import {
+  getSyncToken, getSyncGistId, clearSyncToken,
+  fetchFromGist, pushToGist, mergeData,
+} from './lib/gistSync.js';
 import AppHeader from './components/AppHeader.jsx';
 import MotivationBanner from './components/MotivationBanner.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import HeatmapCalendar from './components/HeatmapCalendar.jsx';
 import WeightTracker from './components/WeightTracker.jsx';
 import StatsView from './components/StatsView.jsx';
+import SyncSetup from './components/SyncSetup.jsx';
 
 const TABS = [
   { id: 'dashboard', label: '⚡ Dashboard' },
@@ -19,23 +24,91 @@ export default function App() {
   const [data, setData] = useState(() => getData());
   const [activeTab, setActiveTab] = useState('dashboard');
   const [toast, setToast] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | error
+  const [showSetup, setShowSetup] = useState(false);
+  const pushTimer = useRef(null);
   const todayStr = today();
 
-  const refresh = useCallback(() => setData(getData()), []);
+  // On mount: if token+gistId exist, pull and merge; otherwise show setup
+  useEffect(() => {
+    const token = getSyncToken();
+    const gistId = getSyncGistId();
+    if (token && gistId) {
+      setSyncStatus('syncing');
+      fetchFromGist(token, gistId)
+        .then((remote) => {
+          if (remote) {
+            const local = getData();
+            const merged = mergeData(local, remote);
+            saveData(merged);
+            setData(merged);
+          }
+          setSyncStatus('synced');
+        })
+        .catch(() => setSyncStatus('error'));
+    } else if (!token) {
+      setShowSetup(true);
+    }
+  }, []);
+
+  const refresh = useCallback(() => {
+    const local = getData();
+    setData(local);
+
+    const token = getSyncToken();
+    const gistId = getSyncGistId();
+    if (!token || !gistId) return;
+
+    // Debounced push
+    clearTimeout(pushTimer.current);
+    setSyncStatus('syncing');
+    pushTimer.current = setTimeout(() => {
+      pushToGist(token, gistId, getData())
+        .then(() => setSyncStatus('synced'))
+        .catch(() => setSyncStatus('error'));
+    }, 1500);
+  }, []);
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 2500);
   }, []);
 
+  const handleSyncComplete = useCallback((token, gistId) => {
+    setShowSetup(false);
+    if (token && gistId) {
+      setSyncStatus('synced');
+      showToast('Sync enabled! Data will stay in sync across devices.', 'success');
+    }
+  }, [showToast]);
+
+  const handleDisconnectSync = useCallback(() => {
+    clearSyncToken();
+    setSyncStatus('idle');
+    showToast('Sync disconnected.', 'warn');
+  }, [showToast]);
+
+  const syncIndicator = getSyncToken()
+    ? syncStatus === 'syncing' ? '↻'
+    : syncStatus === 'synced' ? '✓'
+    : syncStatus === 'error' ? '⚠'
+    : null
+    : null;
+
+  const syncColor = syncStatus === 'synced' ? 'text-emerald-400'
+    : syncStatus === 'error' ? 'text-red-400'
+    : 'text-zinc-400';
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
+      {showSetup && <SyncSetup onComplete={handleSyncComplete} />}
+
       <AppHeader data={data} todayStr={todayStr} />
       <MotivationBanner data={data} todayStr={todayStr} />
 
       {/* Tab nav */}
       <div className="border-b border-zinc-800 sticky top-0 z-10 bg-zinc-950/95 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
           <nav className="flex">
             {TABS.map((tab) => (
               <button
@@ -51,6 +124,35 @@ export default function App() {
               </button>
             ))}
           </nav>
+
+          {/* Sync indicator */}
+          <div className="flex items-center gap-2 text-xs pr-1">
+            {getSyncToken() ? (
+              <>
+                <span className={`font-mono ${syncColor} ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}>
+                  {syncIndicator}
+                </span>
+                <span className={`${syncColor} hidden sm:inline`}>
+                  {syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'synced' ? 'Synced' : 'Sync error'}
+                </span>
+                <button
+                  onClick={handleDisconnectSync}
+                  className="text-zinc-600 hover:text-zinc-400 ml-1 hidden sm:inline"
+                  title="Disconnect sync"
+                >
+                  ✕
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowSetup(true)}
+                className="text-zinc-500 hover:text-emerald-400 transition-colors"
+                title="Enable cross-device sync"
+              >
+                🔄 Sync
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
