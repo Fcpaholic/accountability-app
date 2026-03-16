@@ -26,7 +26,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | error
   const [showSetup, setShowSetup] = useState(false);
-  const [hasToken, setHasToken] = useState(() => !!hasToken);
+  const [hasToken, setHasToken] = useState(() => !!getSyncToken());
   const pushTimer = useRef(null);
   const todayStr = today();
 
@@ -34,7 +34,7 @@ export default function App() {
     const local = getData();
     setData(local);
 
-    const token = hasToken;
+    const token = getSyncToken();
     const gistId = getSyncGistId();
     if (!token || !gistId) return;
 
@@ -55,7 +55,7 @@ export default function App() {
 
   // On mount: if token+gistId exist, pull and merge; otherwise show setup
   useEffect(() => {
-    const token = hasToken;
+    const token = getSyncToken();
     const gistId = getSyncGistId();
     if (token && gistId) {
       setSyncStatus('syncing');
