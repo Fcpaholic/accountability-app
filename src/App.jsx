@@ -84,7 +84,6 @@ export default function App() {
         const merged = mergeData(local, remote);
         saveData(merged);
         setData(merged);
-        // Push merged result back so both devices have the same state
         await pushToGist(token, gistId, merged);
       }
       setSyncStatus('synced');
@@ -92,6 +91,18 @@ export default function App() {
       setSyncStatus('error');
     }
   }, []);
+
+  // Pull every 30s and when tab becomes visible
+  useEffect(() => {
+    const token = getSyncToken();
+    const gistId = getSyncGistId();
+    if (!token || !gistId) return;
+
+    const interval = setInterval(() => pullAndMerge(token, gistId), 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') pullAndMerge(token, gistId); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
+  }, [hasToken, pullAndMerge]);
 
   const handleSyncComplete = useCallback((token, gistId) => {
     setShowSetup(false);

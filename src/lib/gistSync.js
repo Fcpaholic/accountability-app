@@ -62,9 +62,7 @@ export const pollDeviceToken = async (deviceCode, intervalSecs, onTick) => {
 // ─── Gist operations ─────────────────────────────────────────────────────────
 
 export const findOrCreateGist = async (token) => {
-  const cached = getSyncGistId();
-  if (cached) return cached;
-
+  // Always search by filename — never trust cache, in case device has stale/wrong ID
   const gists = await fetch('https://api.github.com/gists', {
     headers: { Authorization: `token ${token}` },
   }).then((r) => r.json());
