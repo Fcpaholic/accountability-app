@@ -26,12 +26,36 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | error
   const [showSetup, setShowSetup] = useState(false);
+  const [hasToken, setHasToken] = useState(() => !!hasToken);
   const pushTimer = useRef(null);
   const todayStr = today();
 
+  const refresh = useCallback(() => {
+    const local = getData();
+    setData(local);
+
+    const token = hasToken;
+    const gistId = getSyncGistId();
+    if (!token || !gistId) return;
+
+    // Debounced push
+    clearTimeout(pushTimer.current);
+    setSyncStatus('syncing');
+    pushTimer.current = setTimeout(() => {
+      pushToGist(token, gistId, getData())
+        .then(() => setSyncStatus('synced'))
+        .catch(() => setSyncStatus('error'));
+    }, 1500);
+  }, []);
+
+  const showToast = useCallback((msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 2500);
+  }, []);
+
   // On mount: if token+gistId exist, pull and merge; otherwise show setup
   useEffect(() => {
-    const token = getSyncToken();
+    const token = hasToken;
     const gistId = getSyncGistId();
     if (token && gistId) {
       setSyncStatus('syncing');
@@ -51,48 +75,43 @@ export default function App() {
     }
   }, []);
 
-  const refresh = useCallback(() => {
-    const local = getData();
-    setData(local);
-
-    const token = getSyncToken();
-    const gistId = getSyncGistId();
-    if (!token || !gistId) return;
-
-    // Debounced push
-    clearTimeout(pushTimer.current);
+  const pullAndMerge = useCallback(async (token, gistId) => {
     setSyncStatus('syncing');
-    pushTimer.current = setTimeout(() => {
-      pushToGist(token, gistId, getData())
-        .then(() => setSyncStatus('synced'))
-        .catch(() => setSyncStatus('error'));
-    }, 1500);
-  }, []);
-
-  const showToast = useCallback((msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 2500);
+    try {
+      const remote = await fetchFromGist(token, gistId);
+      if (remote) {
+        const local = getData();
+        const merged = mergeData(local, remote);
+        saveData(merged);
+        setData(merged);
+        // Push merged result back so both devices have the same state
+        await pushToGist(token, gistId, merged);
+      }
+      setSyncStatus('synced');
+    } catch {
+      setSyncStatus('error');
+    }
   }, []);
 
   const handleSyncComplete = useCallback((token, gistId) => {
     setShowSetup(false);
     if (token && gistId) {
-      setSyncStatus('synced');
-      showToast('Sync enabled! Data will stay in sync across devices.', 'success');
+      setHasToken(true);
+      showToast('Sync enabled! Pulling data…', 'success');
+      pullAndMerge(token, gistId);
     }
-  }, [showToast]);
+  }, [showToast, pullAndMerge]);
 
   const handleDisconnectSync = useCallback(() => {
     clearSyncToken();
+    setHasToken(false);
     setSyncStatus('idle');
     showToast('Sync disconnected.', 'warn');
   }, [showToast]);
 
-  const syncIndicator = getSyncToken()
-    ? syncStatus === 'syncing' ? '↻'
+  const syncIndicator = syncStatus === 'syncing' ? '↻'
     : syncStatus === 'synced' ? '✓'
     : syncStatus === 'error' ? '⚠'
-    : null
     : null;
 
   const syncColor = syncStatus === 'synced' ? 'text-emerald-400'
@@ -127,7 +146,7 @@ export default function App() {
 
           {/* Sync indicator */}
           <div className="flex items-center gap-2 text-xs pr-1">
-            {getSyncToken() ? (
+            {hasToken ? (
               <>
                 <span className={`font-mono ${syncColor} ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}>
                   {syncIndicator}
