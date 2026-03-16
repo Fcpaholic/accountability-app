@@ -28,6 +28,7 @@ export default function App() {
   const [showSetup, setShowSetup] = useState(false);
   const [hasToken, setHasToken] = useState(() => !!getSyncToken());
   const pushTimer = useRef(null);
+  const lastEditAt = useRef(0); // tracks when user last made a change
   const todayStr = today();
 
   const showToast = useCallback((msg, type = 'success') => {
@@ -35,10 +36,11 @@ export default function App() {
     setTimeout(() => setToast(null), 2500);
   }, []);
 
-  // Pull latest data from gist and replace local — gist is source of truth
+  // Pull from gist → overwrite local. Skip if user edited in last 5s (avoid clobbering in-progress input).
   const pullNow = useCallback(async () => {
     const token = getSyncToken();
     if (!token) return;
+    if (Date.now() - lastEditAt.current < 5000) return;
     setSyncStatus('syncing');
     try {
       const gistId = await findOrCreateGist(token);
@@ -53,20 +55,7 @@ export default function App() {
     }
   }, []);
 
-  // Push current local data to gist
-  const pushNow = useCallback(async () => {
-    const token = getSyncToken();
-    const gistId = getSyncGistId();
-    if (!token || !gistId) return;
-    try {
-      await pushToGist(token, gistId, getData());
-      setSyncStatus('synced');
-    } catch {
-      setSyncStatus('error');
-    }
-  }, []);
-
-  // On mount: pull from gist (gist wins) or show setup
+  // On mount: pull so this device gets the latest data
   useEffect(() => {
     if (getSyncToken()) {
       pullNow();
@@ -84,28 +73,34 @@ export default function App() {
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
   }, [hasToken, pullNow]);
 
-  // Called after every local change — debounced push to gist
+  // Called after every local data change — push to gist
   const refresh = useCallback(() => {
+    lastEditAt.current = Date.now();
     setData(getData());
     const token = getSyncToken();
     const gistId = getSyncGistId();
     if (!token || !gistId) return;
     clearTimeout(pushTimer.current);
     setSyncStatus('syncing');
-    pushTimer.current = setTimeout(pushNow, 1000);
-  }, [pushNow]);
+    pushTimer.current = setTimeout(async () => {
+      try {
+        await pushToGist(token, gistId, getData());
+        setSyncStatus('synced');
+      } catch {
+        setSyncStatus('error');
+      }
+    }, 800);
+  }, []);
 
+  // After setup: PULL from gist (don't push — would overwrite other device's data)
   const handleSyncComplete = useCallback((token, gistId) => {
     setShowSetup(false);
     if (token && gistId) {
       setHasToken(true);
       showToast('Sync enabled!', 'success');
-      // Push local data first so it's not overwritten, then mark synced
-      pushToGist(token, gistId, getData())
-        .then(() => setSyncStatus('synced'))
-        .catch(() => setSyncStatus('error'));
+      pullNow();
     }
-  }, [showToast]);
+  }, [showToast, pullNow]);
 
   const handleDisconnectSync = useCallback(() => {
     clearSyncToken();
