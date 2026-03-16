@@ -1,0 +1,349 @@
+import {
+  CALORIE_TARGET,
+  CALORIE_MAINTENANCE,
+  WEEKLY_KM_TARGET,
+  WEEKLY_GYM_TARGET,
+  today,
+  isPast,
+  daysLeftInWeek,
+  getChallengeWeeks,
+  getAllChallengeDays,
+  getWeekStart,
+  getWeekDays,
+} from './dates.js';
+
+// ─── Day helpers ────────────────────────────────────────────────────────────
+
+export const getDayKm = (dayData) =>
+  (dayData?.runs ?? []).reduce((s, km) => s + km, 0);
+
+export const getCalorieStatus = (calories) => {
+  if (calories === null || calories === undefined) return 'unlogged';
+  if (calories <= CALORIE_TARGET) return 'deficit';
+  if (calories < CALORIE_MAINTENANCE) return 'warning';
+  return 'surplus';
+};
+
+/** Returns one of: future | empty | perfect | deficit | active | warning | surplus | partial */
+export const getDayStatus = (dateStr, allDays) => {
+  const todayStr = today();
+  if (dateStr > todayStr) return 'future';
+
+  const d = allDays[dateStr];
+  const hasAny =
+    d &&
+    (d.calories !== null ||
+      (d.gymSessions && d.gymSessions > 0) ||
+      (d.runs && d.runs.length > 0));
+
+  if (!d || !hasAny) return 'empty';
+
+  const inDeficit = d.calories !== null && d.calories <= CALORIE_TARGET;
+  const surplus = d.calories !== null && d.calories >= CALORIE_MAINTENANCE;
+  const overTarget = d.calories !== null && d.calories > CALORIE_TARGET;
+  const hasActivity = (d.gymSessions || 0) > 0 || (d.runs && d.runs.length > 0);
+
+  if (inDeficit && hasActivity) return 'perfect';
+  if (inDeficit) return 'deficit';
+  if (surplus) return 'surplus';
+  if (overTarget) return 'warning';
+  if (hasActivity) return 'active';
+  return 'partial';
+};
+
+// ─── Week stats ─────────────────────────────────────────────────────────────
+
+export const getWeekStats = (weekDays, allDays) => {
+  let km = 0;
+  let gymSessions = 0;
+  let deficitDays = 0;
+  let loggedDays = 0;
+
+  for (const day of weekDays) {
+    const d = allDays[day];
+    if (!d) continue;
+    km += getDayKm(d);
+    gymSessions += d.gymSessions || 0;
+    if (d.calories !== null && d.calories <= CALORIE_TARGET) deficitDays++;
+    if (
+      d.calories !== null ||
+      (d.runs && d.runs.length > 0) ||
+      (d.gymSessions && d.gymSessions > 0)
+    )
+      loggedDays++;
+  }
+
+  return {
+    km: Math.round(km * 10) / 10,
+    gymSessions,
+    deficitDays,
+    loggedDays,
+    kmDone: km >= WEEKLY_KM_TARGET,
+    gymDone: gymSessions >= WEEKLY_GYM_TARGET,
+  };
+};
+
+// ─── Streak ──────────────────────────────────────────────────────────────────
+
+export const getCurrentStreak = (data) => {
+  const allDays = data.days || {};
+  const todayStr = today();
+
+  const dayActive = (dateStr) => {
+    const d = allDays[dateStr];
+    return (
+      d &&
+      (d.calories !== null ||
+        (d.gymSessions && d.gymSessions > 0) ||
+        (d.runs && d.runs.length > 0))
+    );
+  };
+
+  let streak = 0;
+  const parseLocal = (dateStr) => {
+    const [y, m, dd] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, dd, 12, 0, 0);
+  };
+
+  let cursor = parseLocal(todayStr);
+  if (!dayActive(todayStr)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  while (true) {
+    const y = cursor.getFullYear();
+    const m = String(cursor.getMonth() + 1).padStart(2, '0');
+    const d = String(cursor.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
+
+    if (dateStr < '2026-03-16') break;
+    if (!dayActive(dateStr)) break;
+
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return streak;
+};
+
+// ─── Discipline score (0-100) ─────────────────────────────────────────────
+
+const POINTS = {
+  deficit: 10,
+  gym: 8,
+  run: 5,
+  weekGym: 15,
+  weekKm: 15,
+  weekAllDeficit: 20,
+};
+
+export const getDisciplineScore = (data) => {
+  const allDays = data.days || {};
+  const todayStr = today();
+  let earned = 0;
+  let possible = 0;
+
+  for (const { days } of getChallengeWeeks()) {
+    const pastDays = days.filter((d) => d <= todayStr);
+    if (pastDays.length === 0) continue;
+
+    for (const day of pastDays) {
+      possible += POINTS.deficit + POINTS.gym + POINTS.run;
+      const d = allDays[day];
+      if (!d) continue;
+      if (d.calories !== null && d.calories <= CALORIE_TARGET) earned += POINTS.deficit;
+      if (d.gymSessions && d.gymSessions > 0) earned += POINTS.gym;
+      if (d.runs && d.runs.length > 0) earned += POINTS.run;
+    }
+
+    // Week completion bonus — only for fully elapsed weeks
+    const weekElapsed = days.every((d) => d < todayStr);
+    if (weekElapsed) {
+      possible += POINTS.weekGym + POINTS.weekKm + POINTS.weekAllDeficit;
+      const stats = getWeekStats(days, allDays);
+      if (stats.gymSessions >= WEEKLY_GYM_TARGET) earned += POINTS.weekGym;
+      if (stats.km >= WEEKLY_KM_TARGET) earned += POINTS.weekKm;
+
+      const loggedInWeek = days.filter(
+        (d) => allDays[d] && allDays[d].calories !== null
+      );
+      if (
+        loggedInWeek.length === days.length &&
+        loggedInWeek.every((d) => allDays[d].calories <= CALORIE_TARGET)
+      ) {
+        earned += POINTS.weekAllDeficit;
+      }
+    }
+  }
+
+  if (possible === 0) return 0;
+  return Math.round((earned / possible) * 100);
+};
+
+// ─── Badges ──────────────────────────────────────────────────────────────────
+
+export const getBadges = (data) => {
+  const allDays = data.days || {};
+  const todayStr = today();
+  const badges = [];
+
+  for (const { weekNumber, days } of getChallengeWeeks()) {
+    const weekElapsed = days.every((d) => d < todayStr);
+    if (!weekElapsed) continue;
+
+    const stats = getWeekStats(days, allDays);
+    const loggedDays = days.filter((d) => allDays[d] && allDays[d].calories !== null);
+    const allDeficit =
+      loggedDays.length === days.length &&
+      loggedDays.every((d) => allDays[d].calories <= CALORIE_TARGET);
+
+    if (stats.gymSessions >= WEEKLY_GYM_TARGET) {
+      badges.push({
+        id: `gym-w${weekNumber}`,
+        label: `Wk ${weekNumber} Iron`,
+        icon: '🏋',
+        type: 'gym',
+      });
+    }
+    if (stats.km >= WEEKLY_KM_TARGET) {
+      badges.push({
+        id: `run-w${weekNumber}`,
+        label: `Wk ${weekNumber} Road`,
+        icon: '🏃',
+        type: 'run',
+      });
+    }
+    if (stats.gymSessions >= WEEKLY_GYM_TARGET && stats.km >= WEEKLY_KM_TARGET && allDeficit) {
+      badges.push({
+        id: `perfect-w${weekNumber}`,
+        label: `Wk ${weekNumber} Perfect`,
+        icon: '⭐',
+        type: 'perfect',
+      });
+    }
+  }
+
+  const streak = getCurrentStreak(data);
+  if (streak >= 7) badges.push({ id: 'streak-7', label: '7-Day Streak', icon: '🔥', type: 'streak' });
+  if (streak >= 14) badges.push({ id: 'streak-14', label: '14-Day Streak', icon: '💥', type: 'streak' });
+  if (streak >= 21) badges.push({ id: 'streak-21', label: '21-Day Streak', icon: '⚡', type: 'streak' });
+
+  return badges;
+};
+
+// ─── Motivation message ───────────────────────────────────────────────────────
+
+export const getMotivationMessage = (data, todayStr) => {
+  const allDays = data.days || {};
+  const d = allDays[todayStr] || {};
+
+  const calories = d.calories ?? null;
+  const gymSessions = d.gymSessions || 0;
+  const hasRun = (d.runs || []).length > 0;
+
+  const ws = getWeekStart(todayStr);
+  const weekDaysToDate = getWeekDays(ws).filter((day) => day <= todayStr);
+  const stats = getWeekStats(weekDaysToDate, allDays);
+
+  const dLeft = daysLeftInWeek(todayStr);
+  const kmLeft = Math.max(0, WEEKLY_KM_TARGET - stats.km);
+  const gymLeft = Math.max(0, WEEKLY_GYM_TARGET - stats.gymSessions);
+
+  if (gymLeft > 0 && gymLeft >= dLeft) {
+    return {
+      type: 'danger',
+      msg: `${gymLeft} gym session${gymLeft !== 1 ? 's' : ''} needed in ${dLeft} day${dLeft !== 1 ? 's' : ''}. This is non-negotiable.`,
+    };
+  }
+
+  if (calories !== null && calories >= CALORIE_MAINTENANCE) {
+    return {
+      type: 'danger',
+      msg: "Over maintenance. You failed today's nutrition. No excuses — make tomorrow count.",
+    };
+  }
+
+  if (calories === null && gymSessions === 0 && !hasRun) {
+    return {
+      type: 'warning',
+      msg: 'Nothing logged today. The day is counting whether you track it or not.',
+    };
+  }
+
+  const kmPerDayNeeded = dLeft > 0 ? kmLeft / dLeft : kmLeft;
+  if (kmLeft > 0 && kmPerDayNeeded > 8) {
+    return {
+      type: 'warning',
+      msg: `${kmLeft.toFixed(1)} km left, ${dLeft} day${dLeft !== 1 ? 's' : ''} remaining. You're falling behind on running.`,
+    };
+  }
+
+  if (calories !== null && calories > CALORIE_TARGET && calories < CALORIE_MAINTENANCE) {
+    return {
+      type: 'warning',
+      msg: `${calories} kcal — over target but under maintenance. Close is not good enough.`,
+    };
+  }
+
+  if (kmLeft === 0 && gymLeft === 0 && calories !== null && calories <= CALORIE_TARGET) {
+    return {
+      type: 'success',
+      msg: 'Weekly goals complete. Deficit locked. This is what discipline looks like.',
+    };
+  }
+
+  if (calories !== null && calories <= CALORIE_TARGET && gymSessions > 0) {
+    return {
+      type: 'success',
+      msg: "Deficit hit. Gym done. That's the standard — repeat tomorrow.",
+    };
+  }
+
+  if (calories !== null && calories <= CALORIE_TARGET) {
+    return {
+      type: 'info',
+      msg: 'Deficit locked in. Still need the gym session. Get it done.',
+    };
+  }
+
+  if (gymSessions > 0) {
+    return {
+      type: 'info',
+      msg: 'Gym done. Log your calories. Every number matters.',
+    };
+  }
+
+  return {
+    type: 'info',
+    msg: `${kmLeft.toFixed(1)} km and ${gymLeft} gym session${gymLeft !== 1 ? 's' : ''} left this week. No excuses.`,
+  };
+};
+
+// ─── Weight chart data ────────────────────────────────────────────────────────
+
+export const getWeightChartData = (data) => {
+  const allDays = data.days || {};
+  return getAllChallengeDays()
+    .filter((d) => allDays[d] && allDays[d].weight !== null)
+    .map((d) => ({
+      date: d,
+      label: d.slice(5).replace('-', '/'),
+      weight: allDays[d].weight,
+    }));
+};
+
+// ─── Weekly summaries ─────────────────────────────────────────────────────────
+
+export const getWeeklySummaries = (data) => {
+  const allDays = data.days || {};
+  const todayStr = today();
+
+  return getChallengeWeeks().map(({ weekNumber, weekStart, days }) => {
+    const pastDays = days.filter((d) => d <= todayStr);
+    const stats = getWeekStats(pastDays, allDays);
+    const isCurrentWeek = days.includes(todayStr);
+    const isElapsed = days.every((d) => d < todayStr);
+
+    return { weekNumber, weekStart, days, pastDays, stats, isCurrentWeek, isElapsed };
+  });
+};
