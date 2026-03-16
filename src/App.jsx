@@ -3,7 +3,7 @@ import { getData, saveData } from './lib/storage.js';
 import { today } from './lib/dates.js';
 import {
   getSyncToken, getSyncGistId, clearSyncToken,
-  findOrCreateGist, fetchFromGist, pushToGist, mergeData,
+  findOrCreateGist, fetchFromGist, pushToGist,
 } from './lib/gistSync.js';
 import AppHeader from './components/AppHeader.jsx';
 import MotivationBanner from './components/MotivationBanner.jsx';
@@ -35,9 +35,8 @@ export default function App() {
     setTimeout(() => setToast(null), 2500);
   }, []);
 
-  // One function for all sync operations.
-  // Always calls findOrCreateGist so it never uses a stale cached gist ID.
-  const syncNow = useCallback(async () => {
+  // Pull latest data from gist and replace local — gist is source of truth
+  const pullNow = useCallback(async () => {
     const token = getSyncToken();
     if (!token) return;
     setSyncStatus('syncing');
@@ -45,11 +44,8 @@ export default function App() {
       const gistId = await findOrCreateGist(token);
       const remote = await fetchFromGist(token, gistId);
       if (remote) {
-        const local = getData();
-        const merged = mergeData(local, remote);
-        saveData(merged);
-        setData(merged);
-        await pushToGist(token, gistId, merged);
+        saveData(remote);
+        setData(remote);
       }
       setSyncStatus('synced');
     } catch {
@@ -57,25 +53,38 @@ export default function App() {
     }
   }, []);
 
-  // On mount: sync if token exists, otherwise show setup
+  // Push current local data to gist
+  const pushNow = useCallback(async () => {
+    const token = getSyncToken();
+    const gistId = getSyncGistId();
+    if (!token || !gistId) return;
+    try {
+      await pushToGist(token, gistId, getData());
+      setSyncStatus('synced');
+    } catch {
+      setSyncStatus('error');
+    }
+  }, []);
+
+  // On mount: pull from gist (gist wins) or show setup
   useEffect(() => {
     if (getSyncToken()) {
-      syncNow();
+      pullNow();
     } else {
       setShowSetup(true);
     }
   }, []);
 
-  // Pull every 30s + on tab focus
+  // Pull every 30s and when tab becomes visible
   useEffect(() => {
     if (!hasToken) return;
-    const interval = setInterval(syncNow, 30000);
-    const onVisible = () => { if (document.visibilityState === 'visible') syncNow(); };
+    const interval = setInterval(pullNow, 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') pullNow(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
-  }, [hasToken, syncNow]);
+  }, [hasToken, pullNow]);
 
-  // Called after every local data change — debounced push
+  // Called after every local change — debounced push to gist
   const refresh = useCallback(() => {
     setData(getData());
     const token = getSyncToken();
@@ -83,21 +92,20 @@ export default function App() {
     if (!token || !gistId) return;
     clearTimeout(pushTimer.current);
     setSyncStatus('syncing');
-    pushTimer.current = setTimeout(() => {
-      pushToGist(token, gistId, getData())
-        .then(() => setSyncStatus('synced'))
-        .catch(() => setSyncStatus('error'));
-    }, 1500);
-  }, []);
+    pushTimer.current = setTimeout(pushNow, 1000);
+  }, [pushNow]);
 
   const handleSyncComplete = useCallback((token, gistId) => {
     setShowSetup(false);
     if (token && gistId) {
       setHasToken(true);
       showToast('Sync enabled!', 'success');
-      syncNow();
+      // Push local data first so it's not overwritten, then mark synced
+      pushToGist(token, gistId, getData())
+        .then(() => setSyncStatus('synced'))
+        .catch(() => setSyncStatus('error'));
     }
-  }, [showToast, syncNow]);
+  }, [showToast]);
 
   const handleDisconnectSync = useCallback(() => {
     clearSyncToken();
@@ -110,11 +118,6 @@ export default function App() {
     : syncStatus === 'error' ? 'text-red-400'
     : 'text-zinc-400';
 
-  const syncLabel = syncStatus === 'syncing' ? 'Syncing…'
-    : syncStatus === 'synced' ? 'Synced'
-    : syncStatus === 'error' ? 'Sync error'
-    : '';
-
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {showSetup && <SyncSetup onComplete={handleSyncComplete} />}
@@ -122,7 +125,6 @@ export default function App() {
       <AppHeader data={data} todayStr={todayStr} />
       <MotivationBanner data={data} todayStr={todayStr} />
 
-      {/* Tab nav */}
       <div className="border-b border-zinc-800 sticky top-0 z-10 bg-zinc-950/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
           <nav className="flex">
@@ -147,8 +149,10 @@ export default function App() {
                 <span className={`${syncColor} ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}>
                   {syncStatus === 'syncing' ? '↻' : syncStatus === 'synced' ? '✓' : '⚠'}
                 </span>
-                <span className={`${syncColor} hidden sm:inline`}>{syncLabel}</span>
-                <button onClick={handleDisconnectSync} className="text-zinc-600 hover:text-zinc-400 ml-1 hidden sm:inline" title="Disconnect sync">✕</button>
+                <span className={`${syncColor} hidden sm:inline`}>
+                  {syncStatus === 'syncing' ? 'Syncing…' : syncStatus === 'synced' ? 'Synced' : 'Sync error'}
+                </span>
+                <button onClick={handleDisconnectSync} className="text-zinc-600 hover:text-zinc-400 ml-1 hidden sm:inline">✕</button>
               </>
             ) : (
               <button onClick={() => setShowSetup(true)} className="text-zinc-500 hover:text-emerald-400 transition-colors">
