@@ -54,13 +54,14 @@ function GymPips({ count, target }) {
   );
 }
 
-export default function WeekProgress({ data, weekStats, weekDays, todayStr }) {
+export default function WeekProgress({ data, weekStats, weekDays, todayStr, selectedDate }) {
   const allDays = data.days || {};
-  const ws = getWeekStart(todayStr);
+  const activeDate = selectedDate || todayStr;
+  const ws = getWeekStart(activeDate);
 
   const kmLeft = Math.max(0, WEEKLY_KM_TARGET - weekStats.km);
   const gymLeft = Math.max(0, WEEKLY_GYM_TARGET - weekStats.gymSessions);
-  const { target: calorieTarget, label: protocolLabel, isDietBreak } = getWeekCalorieTarget(todayStr);
+  const { target: calorieTarget, label: protocolLabel, isDietBreak } = getWeekCalorieTarget(activeDate);
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-5">
@@ -82,7 +83,7 @@ export default function WeekProgress({ data, weekStats, weekDays, todayStr }) {
       <div className="grid grid-cols-7 gap-1">
         {weekDays.map((day, i) => {
           const status = getDayStatus(day, allDays);
-          const isCurrentDay = isToday(day);
+          const isCurrentDay = day === activeDate;
           const inChallenge = day >= CHALLENGE_START && day <= CHALLENGE_END;
 
           return (

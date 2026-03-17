@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   setCalories,
   addGymSession,
@@ -7,7 +7,7 @@ import {
   removeRun,
   setWeight,
 } from '../lib/storage.js';
-import { CALORIE_MAINTENANCE, shortLabel, getWeekCalorieTarget } from '../lib/dates.js';
+import { CALORIE_MAINTENANCE, getWeekCalorieTarget } from '../lib/dates.js';
 import { getCalorieStatus, getDayKm } from '../lib/calculations.js';
 
 const calorieStatusStyle = (status) => {
@@ -23,8 +23,8 @@ const calorieStatusStyle = (status) => {
   }
 };
 
-export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
-  const dayData = (data.days || {})[todayStr] || {
+export default function TodayPanel({ data, onRefresh, dateStr, todayStr, showToast }) {
+  const dayData = (data.days || {})[dateStr] || {
     calories: null,
     gymSessions: 0,
     runs: [],
@@ -40,20 +40,27 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
   const [showRunInput, setShowRunInput] = useState(false);
   const [runKm, setRunKm] = useState('');
 
-  // Refresh local inputs when data changes
+  // Reset inputs when switching days
+  useEffect(() => {
+    const d = (data.days || {})[dateStr] || {};
+    setCalInput(d.calories != null ? String(d.calories) : '');
+    setWeightInput(d.weight != null ? String(d.weight) : '');
+    setShowRunInput(false);
+    setRunKm('');
+  }, [dateStr, data]);
+
   const calories = dayData.calories;
   const gymSessions = dayData.gymSessions || 0;
   const runs = dayData.runs || [];
   const weight = dayData.weight;
 
   const { target: calorieTarget, deficit, label: weekLabel, rationale, isDietBreak } =
-    getWeekCalorieTarget(todayStr);
+    getWeekCalorieTarget(dateStr);
 
-  const status = getCalorieStatus(calories, todayStr);
+  const status = getCalorieStatus(calories, dateStr);
   const styles = calorieStatusStyle(status);
   const todayKm = getDayKm(dayData);
 
-  // Bar fills relative to maintenance (visual ceiling)
   const caloriePct = calories !== null
     ? Math.min((calories / CALORIE_MAINTENANCE) * 100, 100)
     : 0;
@@ -61,27 +68,27 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
   const handleCaloriesSave = (val) => {
     const num = Number(val);
     if (val === '' || isNaN(num) || num < 0) return;
-    onRefresh(setCalories(todayStr, num));
-    const s = getCalorieStatus(num, todayStr);
+    onRefresh(setCalories(dateStr, num));
+    const s = getCalorieStatus(num, dateStr);
     if (s === 'deficit') showToast('Target hit. Well done.', 'success');
     else if (s === 'surplus') showToast('Over maintenance. Fix it tomorrow.', 'danger');
     else showToast('Calories logged.', 'info');
   };
 
   const handleGymAdd = () => {
-    onRefresh(addGymSession(todayStr));
+    onRefresh(addGymSession(dateStr));
     showToast('Gym session logged.', 'success');
   };
 
   const handleGymRemove = () => {
     if (gymSessions <= 0) return;
-    onRefresh(removeGymSession(todayStr));
+    onRefresh(removeGymSession(dateStr));
   };
 
   const handleRunAdd = () => {
     const km = Number(runKm);
     if (!runKm || isNaN(km) || km <= 0) return;
-    onRefresh(addRun(todayStr, km));
+    onRefresh(addRun(dateStr, km));
     showToast(`${km} km logged. Keep running.`, 'success');
     setRunKm('');
     setShowRunInput(false);
@@ -90,19 +97,19 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
   const handleWeightSave = (val) => {
     const num = Number(val);
     if (val === '' || isNaN(num) || num <= 0) return;
-    onRefresh(setWeight(todayStr, num));
+    onRefresh(setWeight(dateStr, num));
     showToast(`Weight logged: ${num} kg`, 'success');
   };
 
+  const isPastDay = dateStr < todayStr;
+
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Today</h2>
-          <p className="text-sm font-medium text-zinc-300 mt-0.5">{shortLabel(todayStr)}</p>
+      {isPastDay && (
+        <div className="bg-zinc-800/60 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-400">
+          ✏️ Editing past day — changes will sync to all devices.
         </div>
-      </div>
+      )}
 
       {/* ── Weekly Protocol Card ─────────── */}
       <div className={`rounded-lg px-3 py-2.5 border text-xs space-y-0.5 ${
@@ -148,7 +155,7 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
             onChange={(e) => setCalInput(e.target.value)}
             onBlur={(e) => handleCaloriesSave(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCaloriesSave(calInput)}
-            placeholder="kcal eaten today"
+            placeholder="kcal eaten"
             className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-600 transition-colors"
           />
           <div className="flex flex-col justify-center text-right text-xs text-zinc-600 shrink-0">
@@ -157,7 +164,6 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
           </div>
         </div>
 
-        {/* Calorie bar */}
         <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-500 ${styles.bar}`}
@@ -210,7 +216,7 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
             Running
           </label>
           {todayKm > 0 && (
-            <span className="text-xs text-emerald-400 font-medium">{todayKm.toFixed(1)} km today</span>
+            <span className="text-xs text-emerald-400 font-medium">{todayKm.toFixed(1)} km</span>
           )}
         </div>
 
@@ -251,7 +257,6 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
           </div>
         )}
 
-        {/* Run list */}
         {runs.length > 0 && (
           <ul className="space-y-1">
             {runs.map((km, i) => (
@@ -261,7 +266,7 @@ export default function TodayPanel({ data, onRefresh, todayStr, showToast }) {
               >
                 <span className="text-sm text-zinc-300">{km} km</span>
                 <button
-                  onClick={() => onRefresh(removeRun(todayStr, i))}
+                  onClick={() => onRefresh(removeRun(dateStr, i))}
                   className="text-zinc-600 hover:text-red-400 text-xs transition-colors"
                 >
                   ✕

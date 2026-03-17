@@ -27,8 +27,9 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState('idle');
   const [showSetup, setShowSetup] = useState(false);
   const [hasToken, setHasToken] = useState(() => !!getSyncToken());
+  const [ghUser, setGhUser] = useState('');
   const pushTimer = useRef(null);
-  const lastEditAt = useRef(0); // tracks when user last made a change
+  const lastEditAt = useRef(0);
   const todayStr = today();
 
   const showToast = useCallback((msg, type = 'success') => {
@@ -55,9 +56,12 @@ export default function App() {
     }
   }, []);
 
-  // On mount: pull so this device gets the latest data
+  // On mount: fetch username + pull data, or show setup
   useEffect(() => {
-    if (getSyncToken()) {
+    const token = getSyncToken();
+    if (token) {
+      fetch('https://api.github.com/user', { headers: { Authorization: `token ${token}` } })
+        .then((r) => r.json()).then((u) => { if (u.login) setGhUser(u.login); }).catch(() => {});
       pullNow();
     } else {
       setShowSetup(true);
@@ -97,6 +101,8 @@ export default function App() {
     setShowSetup(false);
     if (token && gistId) {
       setHasToken(true);
+      fetch('https://api.github.com/user', { headers: { Authorization: `token ${token}` } })
+        .then((r) => r.json()).then((u) => { if (u.login) setGhUser(u.login); }).catch(() => {});
       showToast('Sync enabled!', 'success');
       pullNow();
     }
