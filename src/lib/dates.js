@@ -1,5 +1,5 @@
-export const CHALLENGE_START = '2026-03-16';
-export const CHALLENGE_END = '2026-04-20';
+export const CHALLENGE_START = '2026-03-17';
+export const CHALLENGE_END = '2026-04-21';
 export const CALORIE_MAINTENANCE = 1700;
 export const WEEKLY_KM_TARGET = 25;
 export const WEEKLY_GYM_TARGET = 5;
@@ -141,7 +141,7 @@ export const getAllChallengeDays = () => {
 
 /**
  * Returns challenge weeks as array of { weekStart, days, weekNumber }
- * March 16 is a Monday, so weeks align cleanly.
+ * Challenge starts March 17 (Tuesday).
  */
 export const getChallengeWeeks = () => {
   const weeks = [];
