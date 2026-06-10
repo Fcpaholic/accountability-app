@@ -517,21 +517,18 @@ function AppProvider({children}) {
   return html`<${Ctx.Provider} value=${{tab,setTab,categories,exercises,sessions,sets,activeSession,activeSets,loading,toast,showToast,celebration,startSession,finishSession,addSet,updateSet,deleteSet,deleteSession,addExercise,updateExercise,deleteExercise,exportData,importData,clearAll,loadData}}>${children}</${Ctx.Provider}>`;
 }
 
-// ===== TOAST =====
 function Toast() {
   const {toast} = useContext(Ctx);
   if (!toast) return null;
   return html`<div class="toast-container"><div class="toast ${toast.type}">${toast.msg}</div></div>`;
 }
 
-// ===== CELEBRATION =====
 function Celebration() {
   const {celebration} = useContext(Ctx);
   if (!celebration) return null;
   return html`<div class="celebration">🏆</div>`;
 }
 
-// ===== MODAL =====
 function Modal({onClose, title, children}) {
   return html`
     <div class="modal-backdrop" onClick=${e=>e.target===e.currentTarget&&onClose()}>
@@ -543,7 +540,6 @@ function Modal({onClose, title, children}) {
     </div>`;
 }
 
-// ===== CONFIRM =====
 function ConfirmModal({title, subtitle, onConfirm, onClose, danger=true}) {
   return html`<${Modal} onClose=${onClose}>
     <div class="confirm-icon">${danger?'🗑️':'⚠️'}</div>
@@ -556,7 +552,6 @@ function ConfirmModal({title, subtitle, onConfirm, onClose, danger=true}) {
   </${Modal}>`;
 }
 
-// ===== SET EDITOR =====
 function SetEditorModal({set, onSave, onClose}) {
   const [weight, setWeight] = useState(set?set.weight:20);
   const [reps, setReps] = useState(set?set.reps:10);
@@ -565,11 +560,9 @@ function SetEditorModal({set, onSave, onClose}) {
       <div class="section-label">Weight (kg)</div>
       <div class="stepper">
         <button class="stepper-btn" onClick=${()=>setWeight(w=>Math.max(0,parseFloat((w-0.5).toFixed(1))))}>−</button>
-        <input
-          type="number" class="stepper-input" value=${weight} step="0.5" min="0" inputmode="decimal"
+        <input type="number" class="stepper-input" value=${weight} step="0.5" min="0" inputmode="decimal"
           onInput=${e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>=0)setWeight(v);}}
-          onFocus=${e=>e.target.select()}
-        />
+          onFocus=${e=>e.target.select()} />
         <button class="stepper-btn" onClick=${()=>setWeight(w=>parseFloat((w+0.5).toFixed(1)))}>+</button>
       </div>
       <div class="stepper-unit-label">kg</div>
@@ -578,11 +571,9 @@ function SetEditorModal({set, onSave, onClose}) {
       <div class="section-label">Reps</div>
       <div class="stepper">
         <button class="stepper-btn" onClick=${()=>setReps(r=>Math.max(1,r-1))}>−</button>
-        <input
-          type="number" class="stepper-input" value=${reps} step="1" min="1" inputmode="numeric"
+        <input type="number" class="stepper-input" value=${reps} step="1" min="1" inputmode="numeric"
           onInput=${e=>{const v=parseInt(e.target.value);if(!isNaN(v)&&v>=1)setReps(v);}}
-          onFocus=${e=>e.target.select()}
-        />
+          onFocus=${e=>e.target.select()} />
         <button class="stepper-btn" onClick=${()=>setReps(r=>r+1)}>+</button>
       </div>
       <div class="stepper-unit-label">reps</div>
@@ -591,7 +582,6 @@ function SetEditorModal({set, onSave, onClose}) {
   </${Modal}>`;
 }
 
-// ===== EXERCISE PICKER =====
 function ExercisePickerModal({onSelect, onClose}) {
   const {categories,exercises} = useContext(Ctx);
   const [search, setSearch] = useState('');
@@ -614,7 +604,6 @@ function ExercisePickerModal({onSelect, onClose}) {
   </${Modal}>`;
 }
 
-// ===== EXERCISE FORM =====
 function ExerciseFormModal({exercise, onClose}) {
   const {categories,addExercise,updateExercise,showToast} = useContext(Ctx);
   const [name, setName] = useState(exercise?exercise.name:'');
@@ -640,7 +629,6 @@ function ExerciseFormModal({exercise, onClose}) {
   </${Modal}>`;
 }
 
-// ===== SWIPE SET ROW =====
 function SwipeSetRow({set, onEdit, onDelete, number}) {
   const [offset, setOffset] = useState(0);
   const startX = useRef(0);
@@ -661,103 +649,74 @@ function SwipeSetRow({set, onEdit, onDelete, number}) {
     </div>`;
 }
 
-// ===== DASHBOARD =====
 function Dashboard() {
   const {sessions,sets,exercises,categories,activeSession,setTab} = useContext(Ctx);
-
   const weekStart = getWeekStart();
   const weekSess = sessions.filter(s=>new Date(s.date+'T00:00:00')>=weekStart);
   const weekSets = sets.filter(s=>weekSess.some(ss=>ss.id===s.sessionId));
   const days7 = last7Days();
   const sessDates = new Set(sessions.map(s=>s.date));
-  const today = new Date();
-  const dateStr = today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-
+  const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
   const exMap = Object.fromEntries(exercises.map(e=>[e.id,e]));
   const exMax = {};
   for (const s of [...sets].sort((a,b)=>a.timestamp-b.timestamp)) {
-    if (!exMax[s.exerciseId]||s.weight>exMax[s.exerciseId].weight) exMax[s.exerciseId] = {...s};
+    if (!exMax[s.exerciseId]||s.weight>exMax[s.exerciseId].weight) exMax[s.exerciseId]={...s};
   }
   const prs = Object.entries(exMax).map(([id,s])=>({ex:exMap[id],s})).filter(p=>p.ex&&p.s.weight>0)
     .sort((a,b)=>b.s.timestamp-a.s.timestamp).slice(0,3);
-  const weekPRsCount = prs.filter(p=>{
-    const sess = sessions.find(ss=>ss.id===p.s.sessionId);
-    return sess && new Date(sess.date+'T00:00:00')>=weekStart;
-  }).length;
-
+  const weekPRsCount = prs.filter(p=>{const sess=sessions.find(ss=>ss.id===p.s.sessionId);return sess&&new Date(sess.date+'T00:00:00')>=weekStart;}).length;
   return html`<div>
     <div class="greeting">${greeting()}, champ 💪</div>
     <div class="greeting-date">${dateStr}</div>
     ${activeSession&&html`
       <div class="resume-card" onClick=${()=>setTab('log')}>
         <div style="font-size:28px">⚡</div>
-        <div class="resume-info">
-          <div class="resume-label">Active Session</div>
-          <div class="resume-title">Continue Logging</div>
-        </div>
+        <div class="resume-info"><div class="resume-label">Active Session</div><div class="resume-title">Continue Logging</div></div>
         <svg style="width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-      </div>
-    `}
+      </div>`}
     <div class="stats-row">
       <div class="stat-card"><div class="stat-val">${weekSess.length}</div><div class="stat-lbl">Sessions</div></div>
       <div class="stat-card"><div class="stat-val">${weekSets.length}</div><div class="stat-lbl">Total Sets</div></div>
       <div class="stat-card"><div class="stat-val">${weekPRsCount}</div><div class="stat-lbl">PRs</div></div>
     </div>
-    <div class="card">
-      <div class="card-title">Last 7 Days</div>
-      <div class="activity-row">
-        ${days7.map(d=>html`
-          <div class="activity-dot" style="background:${sessDates.has(d.date)?'rgba(124,58,237,0.45)':'var(--elevated)'};border:1px solid ${sessDates.has(d.date)?'rgba(124,58,237,0.5)':'var(--card-border)'}">
-            <span class="activity-dot-label">${d.label}</span>
-          </div>`)}
-      </div>
-    </div>
-    ${prs.length>0&&html`
-      <div class="card-title" style="margin-top:4px">Recent PRs 🏆</div>
+    <div class="card"><div class="card-title">Last 7 Days</div><div class="activity-row">
+      ${days7.map(d=>html`<div class="activity-dot" style="background:${sessDates.has(d.date)?'rgba(124,58,237,0.45)':'var(--elevated)'};border:1px solid ${sessDates.has(d.date)?'rgba(124,58,237,0.5)':'var(--card-border)'}">
+        <span class="activity-dot-label">${d.label}</span></div>`)}
+    </div></div>
+    ${prs.length>0&&html`<div class="card-title" style="margin-top:4px">Recent PRs 🏆</div>
       ${prs.map(({ex,s})=>{
-        const sess = sessions.find(ss=>ss.id===s.sessionId);
-        const cat = categories.find(c=>c.id===ex.categoryId);
-        return html`<div class="pr-card">
-          <div style="font-size:20px">🥇</div>
-          <div style="flex:1">
-            <div class="pr-ex">${ex.name}</div>
-            <div class="pr-val">${fmtW(s.weight)} kg × ${s.reps} reps</div>
-          </div>
+        const sess=sessions.find(ss=>ss.id===s.sessionId);
+        const cat=categories.find(c=>c.id===ex.categoryId);
+        return html`<div class="pr-card"><div style="font-size:20px">🥇</div>
+          <div style="flex:1"><div class="pr-ex">${ex.name}</div><div class="pr-val">${fmtW(s.weight)} kg × ${s.reps} reps</div></div>
           ${cat&&html`<span class="badge" style="background:${cat.color}22;color:${cat.color}">${cat.name}</span>`}
-          <div class="pr-date">${sess?fmtDateLabel(sess.date):''}</div>
-        </div>`;
-      })}
-    `}
+          <div class="pr-date">${sess?fmtDateLabel(sess.date):''}</div></div>`;
+      })}`}
   </div>`;
 }
 
-// ===== LOG WORKOUT =====
 function LogWorkout() {
-  const {activeSession,activeSets,addSet,updateSet,deleteSet,finishSession,exercises,categories,showToast,sessions,sets:allSets} = useContext(Ctx);
+  const {activeSession,activeSets,addSet,updateSet,deleteSet,exercises,categories,showToast} = useContext(Ctx);
   const [showPicker, setShowPicker] = useState(false);
   const [editingSet, setEditingSet] = useState(null);
-
   const exInSession = [];
   const seen = new Set();
   for (const s of activeSets) { if (!seen.has(s.exerciseId)) { seen.add(s.exerciseId); exInSession.push(s.exerciseId); } }
-
   const handlePickExercise = async ex => {
     if (!seen.has(ex.id)) await addSet(ex.id, 20, 10);
     else showToast('Exercise already added');
   };
-
   const handleAddSet = async exId => {
     const exSets = activeSets.filter(s=>s.exerciseId===exId);
     const last = exSets[exSets.length-1];
     await addSet(exId, last?last.weight:20, last?last.reps:10);
   };
-
   return html`<div>
     ${exInSession.length===0&&html`<div class="empty-state"><div class="empty-icon">➕</div><div class="empty-title">Add your first exercise</div><div class="empty-sub">Tap the button below to get started</div></div>`}
     ${exInSession.map(exId=>{
-      const ex = exercises.find(e=>e.id===exId); if (!ex) return null;
-      const cat = categories.find(c=>c.id===ex.categoryId);
-      const exSets = activeSets.filter(s=>s.exerciseId===exId);
+      const ex=exercises.find(e=>e.id===exId); if(!ex) return null;
+      const cat=categories.find(c=>c.id===ex.categoryId);
+      const exSets=activeSets.filter(s=>s.exerciseId===exId);
       return html`<div class="ex-card" key=${exId}>
         <div class="ex-card-header">
           ${cat&&html`<span class="badge" style="background:${cat.color}22;color:${cat.color}">${cat.name}</span>`}
@@ -775,7 +734,6 @@ function LogWorkout() {
   </div>`;
 }
 
-// ===== HISTORY =====
 function History() {
   const {sessions,sets,exercises,deleteSession} = useContext(Ctx);
   const [expanded, setExpanded] = useState({});
@@ -784,21 +742,21 @@ function History() {
   if (!completed.length) return html`<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">No workouts yet</div><div class="empty-sub">Complete a workout to see your history</div></div>`;
   return html`<div>
     ${completed.map(session=>{
-      const sts = sets.filter(s=>s.sessionId===session.id);
-      const exIds = [...new Set(sts.map(s=>s.exerciseId))];
-      const vol = calcVol(sts);
-      const dur = Math.floor((session.endTime-session.startTime)/60000);
-      const isExp = expanded[session.id];
+      const sts=sets.filter(s=>s.sessionId===session.id);
+      const exIds=[...new Set(sts.map(s=>s.exerciseId))];
+      const vol=calcVol(sts);
+      const dur=Math.floor((session.endTime-session.startTime)/60000);
+      const isExp=expanded[session.id];
       return html`<div class="session-card" key=${session.id}>
-          <div class="session-card-header" onClick=${()=>setExpanded(p=>({...p,[session.id]:!p[session.id]}))}>
-            <div style="flex:1">
-              <div class="session-date">${fmtDateLabel(session.date)}</div>
-              <div class="session-meta">${exIds.length} exercises · ${sts.length} sets · ${fmtW(vol)} kg · ${dur}min</div>
-            </div>
-            <button class="btn btn-icon" style="background:rgba(239,68,68,0.12);color:var(--red);width:34px;height:34px;font-size:14px;border-radius:8px;flex-shrink:0;margin-right:6px"
-              onClick=${e=>{e.stopPropagation();setConfirmDel(session.id);}}>🗑️</button>
-            <div class="session-chevron ${isExp?'open':''}">›</div>
+        <div class="session-card-header" onClick=${()=>setExpanded(p=>({...p,[session.id]:!p[session.id]}))}>
+          <div style="flex:1">
+            <div class="session-date">${fmtDateLabel(session.date)}</div>
+            <div class="session-meta">${exIds.length} exercises · ${sts.length} sets · ${fmtW(vol)} kg · ${dur}min</div>
           </div>
+          <button class="btn btn-icon" style="background:rgba(239,68,68,0.12);color:var(--red);width:34px;height:34px;font-size:14px;border-radius:8px;flex-shrink:0;margin-right:6px"
+            onClick=${e=>{e.stopPropagation();setConfirmDel(session.id);}}>🗑️</button>
+          <div class="session-chevron ${isExp?'open':''}">›</div>
+        </div>
         ${isExp&&html`<div class="session-body">
           ${exIds.map(exId=>{
             const ex=exercises.find(e=>e.id===exId);
@@ -815,48 +773,38 @@ function History() {
   </div>`;
 }
 
-// ===== PROGRESS =====
 function Progress() {
   const {exercises,sets,categories} = useContext(Ctx);
   const [selExId, setSelExId] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
   const wRef = useRef(null), vRef = useRef(null);
   const wChart = useRef(null), vChart = useRef(null);
-
   useEffect(()=>{
     if (selExId||!sets.length||!exercises.length) return;
-    const latest = sets.reduce((b,s)=>(!b||s.timestamp>b.timestamp)?s:b,null);
+    const latest=sets.reduce((b,s)=>(!b||s.timestamp>b.timestamp)?s:b,null);
     if (latest) setSelExId(latest.exerciseId);
   },[exercises,sets]);
-
-  const selEx = exercises.find(e=>e.id===selExId);
-  const exSets = sets.filter(s=>s.exerciseId===selExId);
-  const byDate = {};
-  for (const s of exSets) {
-    const d = s.timestamp?new Date(s.timestamp).toISOString().slice(0,10):'?';
-    if (!byDate[d]) byDate[d]=[];
-    byDate[d].push(s);
-  }
-  const dates = Object.keys(byDate).sort();
-  const maxWts = dates.map(d=>Math.max(...byDate[d].map(s=>s.weight)));
-  const vols = dates.map(d=>calcVol(byDate[d]));
-  const allMax = exSets.reduce((m,s)=>Math.max(m,s.weight),0);
-  const maxReps = exSets.filter(s=>s.weight===allMax).reduce((m,s)=>Math.max(m,s.reps),0);
-  const bestVol = vols.length?Math.max(...vols):0;
-  const cat = categories.find(c=>c.id===selEx?.categoryId);
-
+  const selEx=exercises.find(e=>e.id===selExId);
+  const exSets=sets.filter(s=>s.exerciseId===selExId);
+  const byDate={};
+  for (const s of exSets) { const d=s.timestamp?new Date(s.timestamp).toISOString().slice(0,10):'?'; if(!byDate[d])byDate[d]=[]; byDate[d].push(s); }
+  const dates=Object.keys(byDate).sort();
+  const maxWts=dates.map(d=>Math.max(...byDate[d].map(s=>s.weight)));
+  const vols=dates.map(d=>calcVol(byDate[d]));
+  const allMax=exSets.reduce((m,s)=>Math.max(m,s.weight),0);
+  const maxReps=exSets.filter(s=>s.weight===allMax).reduce((m,s)=>Math.max(m,s.reps),0);
+  const bestVol=vols.length?Math.max(...vols):0;
+  const cat=categories.find(c=>c.id===selEx?.categoryId);
   useEffect(()=>{
-    if (!selExId||!dates.length) return;
-    const labels = dates.map(d=>{const[,m,dd]=d.split('-');return`${m}/${dd}`;});
-    if (wChart.current) {wChart.current.destroy();wChart.current=null;}
-    if (wRef.current) wChart.current = new Chart(wRef.current,{type:'line',data:{labels,datasets:[{label:'Max Weight (kg)',data:maxWts,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,0.15)',fill:true,tension:0.4,pointBackgroundColor:'#A78BFA',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8888AA',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#8888AA',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}}}}});
-    if (vChart.current) {vChart.current.destroy();vChart.current=null;}
-    if (vRef.current) vChart.current = new Chart(vRef.current,{type:'bar',data:{labels,datasets:[{label:'Volume (kg)',data:vols,backgroundColor:'rgba(124,58,237,0.6)',borderColor:'#7C3AED',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8888AA',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#8888AA',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}}}}});
-    return ()=>{if(wChart.current){wChart.current.destroy();wChart.current=null;}if(vChart.current){vChart.current.destroy();vChart.current=null;}};
+    if(!selExId||!dates.length) return;
+    const labels=dates.map(d=>{const[,m,dd]=d.split('-');return`${m}/${dd}`;});
+    if(wChart.current){wChart.current.destroy();wChart.current=null;}
+    if(wRef.current) wChart.current=new Chart(wRef.current,{type:'line',data:{labels,datasets:[{label:'Max Weight (kg)',data:maxWts,borderColor:'#7C3AED',backgroundColor:'rgba(124,58,237,0.15)',fill:true,tension:0.4,pointBackgroundColor:'#A78BFA',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8888AA',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#8888AA',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+    if(vChart.current){vChart.current.destroy();vChart.current=null;}
+    if(vRef.current) vChart.current=new Chart(vRef.current,{type:'bar',data:{labels,datasets:[{label:'Volume (kg)',data:vols,backgroundColor:'rgba(124,58,237,0.6)',borderColor:'#7C3AED',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8888AA',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#8888AA',font:{size:11}},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+    return()=>{if(wChart.current){wChart.current.destroy();wChart.current=null;}if(vChart.current){vChart.current.destroy();vChart.current=null;}};
   },[selExId,sets]);
-
-  const recentSets = [...exSets].sort((a,b)=>b.timestamp-a.timestamp).slice(0,10);
-
+  const recentSets=[...exSets].sort((a,b)=>b.timestamp-a.timestamp).slice(0,10);
   return html`<div>
     <div class="ex-selector" onClick=${()=>setShowPicker(true)}>
       ${cat&&html`<span class="badge" style="background:${cat.color}22;color:${cat.color}">${cat.name}</span>`}
@@ -874,18 +822,15 @@ function Progress() {
       </div>
       <div class="card"><div class="card-title">Weight Progression</div><div class="chart-wrap"><canvas ref=${wRef}></canvas></div></div>
       <div class="card"><div class="card-title">Volume Progression</div><div class="chart-wrap"><canvas ref=${vRef}></canvas></div></div>
-      <div class="card">
-        <div class="card-title">Recent Sets</div>
+      <div class="card"><div class="card-title">Recent Sets</div>
         ${recentSets.map(s=>html`<div class="recent-set-row">
           <span class="recent-set-date">${new Date(s.timestamp).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
           <span class="recent-set-val">Set ${s.setNumber} · ${fmtW(s.weight)} kg × ${s.reps} reps</span>
         </div>`)}
-      </div>
-    `}
+      </div>`}
   </div>`;
 }
 
-// ===== EXERCISES =====
 function Exercises() {
   const {categories,exercises,deleteExercise,setTab} = useContext(Ctx);
   const [activeCat, setActiveCat] = useState('all');
@@ -893,7 +838,7 @@ function Exercises() {
   const [editEx, setEditEx] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
   const [ctxEx, setCtxEx] = useState(null);
-  const filtered = (activeCat==='all'?exercises:exercises.filter(e=>e.categoryId===activeCat)).sort((a,b)=>a.name.localeCompare(b.name));
+  const filtered=(activeCat==='all'?exercises:exercises.filter(e=>e.categoryId===activeCat)).sort((a,b)=>a.name.localeCompare(b.name));
   return html`<div>
     <div class="cat-tabs">
       <button class="cat-tab ${activeCat==='all'?'active':''}" onClick=${()=>setActiveCat('all')}>All</button>
@@ -924,7 +869,6 @@ function Exercises() {
   </div>`;
 }
 
-// ===== SETTINGS =====
 function Settings({onClose}) {
   const {exportData,importData,clearAll} = useContext(Ctx);
   const [showClear, setShowClear] = useState(false);
@@ -952,11 +896,10 @@ function Settings({onClose}) {
         <button class="btn btn-danger" style="flex:1;${clearVal!=='DELETE'?'opacity:0.4':''}" disabled=${clearVal!=='DELETE'} onClick=${()=>{if(clearVal==='DELETE'){clearAll();setShowClear(false);onClose();}}}>Clear All</button>
       </div>
     </div>`}
-    <div style="margin-top:20px;text-align:center;color:var(--text-3);font-size:12px">IronLog v1.0 · Data stays on your device</div>
+    <div style="margin-top:20px;text-align:center;color:var(--text-3);font-size:12px">IronLog v1.1 · Data stays on your device</div>
   </${Modal}>`;
 }
 
-// ===== BOTTOM NAV =====
 function BottomNav() {
   const {tab,setTab,activeSession,startSession} = useContext(Ctx);
   const tabs = [
@@ -966,19 +909,12 @@ function BottomNav() {
     {id:'progress',label:'Progress',icon:html`<svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`},
     {id:'exercises',label:'Exercises',icon:html`<svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 12h11M6.5 17.5h11M3 6.5h.01M3 12h.01M3 17.5h.01"/></svg>`},
   ];
-  const handleTab = (id) => {
-    if (id === 'log' && !activeSession) startSession();
-    else setTab(id);
-  };
+  const handleTab = id => { if(id==='log'&&!activeSession) startSession(); else setTab(id); };
   return html`<nav class="bottom-nav">
-    ${tabs.map(t=>html`
-      <button class="nav-tab ${tab===t.id?'active':''} ${t.id==='log'&&activeSession?'log-active':''}" key=${t.id} onClick=${()=>handleTab(t.id)}>
-        ${t.icon}${t.label}
-      </button>`)}
+    ${tabs.map(t=>html`<button class="nav-tab ${tab===t.id?'active':''} ${t.id==='log'&&activeSession?'log-active':''}" key=${t.id} onClick=${()=>handleTab(t.id)}>${t.icon}${t.label}</button>`)}
   </nav>`;
 }
 
-// ===== HEADER =====
 function Header() {
   const {tab,activeSession,finishSession} = useContext(Ctx);
   const [showSettings, setShowSettings] = useState(false);
@@ -986,39 +922,33 @@ function Header() {
   return html`<header class="app-header">
     <div class="header-inner">
       <div class="header-title">${titles[tab]||'IronLog'}</div>
-      ${tab==='log'&&activeSession&&html`
-        <button class="finish-btn" onClick=${finishSession}>Save</button>
-      `}
+      ${tab==='log'&&activeSession&&html`<button class="finish-btn" onClick=${finishSession}>Save</button>`}
       ${(tab==='dashboard'||tab==='exercises')&&html`<button class="btn btn-icon" onClick=${()=>setShowSettings(true)}>⚙️</button>`}
     </div>
     ${showSettings&&html`<${Settings} onClose=${()=>setShowSettings(false)} />`}
   </header>`;
 }
 
-// ===== APP =====
 function App() {
   const {tab,loading} = useContext(Ctx);
   if (loading) return html`<div class="loader"><div class="spinner"></div></div>`;
-  const screens = {dashboard:Dashboard,log:LogWorkout,history:History,progress:Progress,exercises:Exercises};
-  const Screen = screens[tab]||Dashboard;
+  const screens={dashboard:Dashboard,log:LogWorkout,history:History,progress:Progress,exercises:Exercises};
+  const Screen=screens[tab]||Dashboard;
   return html`<div style="height:100%;display:flex;flex-direction:column">
-    <${Header} />
-    <${Toast} />
-    <${Celebration} />
-    <main class="app-content"><${Screen} /></main>
-    <${BottomNav} />
+    <${Header}/><${Toast}/><${Celebration}/>
+    <main class="app-content"><${Screen}/></main>
+    <${BottomNav}/>
   </div>`;
 }
 
-render(html`<${AppProvider}><${App} /></${AppProvider}>`, document.getElementById('root'));
+render(html`<${AppProvider}><${App}/></${AppProvider}>`, document.getElementById('root'));
 
-// ===== PWA =====
 (function(){
   const manifest={name:'IronLog',short_name:'IronLog',start_url:'/',display:'standalone',background_color:'#07070F',theme_color:'#07070F',description:'Personal strength tracking app',icons:[{src:"data:image/svg+xml,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%237C3AED'/><text y='130' x='96' text-anchor='middle' font-size='100' font-family='sans-serif'>💪</text></svg>`),sizes:'192x192',type:'image/svg+xml'}]};
   const murl=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'}));
   const lnk=document.createElement('link');lnk.rel='manifest';lnk.href=murl;document.head.appendChild(lnk);
   if('serviceWorker' in navigator){
-    const sw=`const C='ironlog-v1';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['/'])));self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(clients.claim());});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{if(res.ok&&e.request.method==='GET'){const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));}return res;}).catch(()=>caches.match('/')||new Response('Offline'))));});`;
+    const sw=`const C='ironlog-v3';const OLD=['ironlog-v1','ironlog-v2'];self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['/'])));self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(Promise.all([clients.claim(),...OLD.map(o=>caches.delete(o))]));});self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).then(res=>{if(res.ok&&e.request.method==='GET'){const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));}return res;}).catch(()=>caches.match(e.request)));});`;
     navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
   }
 })();
