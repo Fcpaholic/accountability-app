@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#07070F">
@@ -97,7 +97,7 @@ body {
 .input {
   width: 100%; background: var(--elevated); border: 1px solid var(--card-border);
   border-radius: 10px; color: var(--text); font-family: var(--font);
-  font-size: 15px; padding: 12px 14px; outline: none; transition: border-color 0.2s;
+  font-size: 16px; padding: 12px 14px; outline: none; transition: border-color 0.2s;
 }
 .input:focus { border-color: var(--primary); }
 .input::placeholder { color: var(--text-3); }
@@ -111,6 +111,15 @@ select.input { appearance: none; -webkit-appearance: none; }
 .stepper-btn:active { background: var(--primary-dim); }
 .stepper-val { flex: 1; text-align: center; font-size: 36px; font-weight: 700; color: var(--text); min-width: 80px; }
 .stepper-unit { font-size: 14px; color: var(--text-2); font-weight: 400; }
+.stepper-input {
+  flex: 1; text-align: center; font-size: 36px; font-weight: 700; color: var(--text);
+  background: var(--elevated); border: 1.5px solid var(--card-border); border-radius: 10px;
+  padding: 8px 4px; outline: none; font-family: var(--font); width: 0; min-width: 0;
+  -moz-appearance: textfield;
+}
+.stepper-input::-webkit-inner-spin-button, .stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper-input:focus { border-color: var(--primary); }
+.stepper-unit-label { font-size: 13px; color: var(--text-2); font-weight: 500; text-align: center; margin-top: 6px; }
 .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
 .toast-container {
   position: fixed; top: calc(env(safe-area-inset-top) + 64px); left: 50%; transform: translateX(-50%);
@@ -186,11 +195,11 @@ select.input { appearance: none; -webkit-appearance: none; }
   display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; transition: all 0.15s;
 }
 .fab:active { transform: scale(0.93); }
-.session-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; margin-bottom: 10px; animation: fadeInUp 0.2s ease; position: relative; }
-.session-card-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; z-index: 1; background: var(--card); border-radius: 16px; transition: transform 0.2s ease; }
-.session-date { font-size: 16px; font-weight: 700; flex: 1; }
-.session-meta { font-size: 12px; color: var(--text-2); }
-.session-chevron { color: var(--text-3); transition: transform 0.2s; font-size: 18px; }
+.session-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; margin-bottom: 10px; animation: fadeInUp 0.2s ease; }
+.session-card-header { display: flex; align-items: center; gap: 8px; padding: 14px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.session-date { font-size: 16px; font-weight: 700; }
+.session-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.session-chevron { color: var(--text-3); transition: transform 0.2s; font-size: 18px; flex-shrink: 0; }
 .session-chevron.open { transform: rotate(90deg); }
 .session-body { padding: 0 16px 14px; border-top: 1px solid var(--card-border); }
 .session-ex { padding: 10px 0; border-bottom: 1px solid var(--card-border); }
@@ -208,7 +217,6 @@ select.input { appearance: none; -webkit-appearance: none; }
 .loader { display: flex; align-items: center; justify-content: center; height: 200px; }
 .spinner { width: 32px; height: 32px; border-radius: 50%; border: 3px solid var(--card-border); border-top-color: var(--primary); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.timer-display { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent); }
 .search-wrap { position: relative; margin-bottom: 12px; }
 .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; stroke: var(--text-3); fill: none; stroke-width: 2; }
 .search-input { padding-left: 36px; }
@@ -218,13 +226,6 @@ select.input { appearance: none; -webkit-appearance: none; }
 .pr-stat { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 10px; text-align: center; }
 .pr-stat-val { font-size: 18px; font-weight: 800; color: var(--accent); }
 .pr-stat-lbl { font-size: 10px; color: var(--text-2); margin-top: 3px; font-weight: 500; }
-.start-workout-btn {
-  width: 100%; min-height: 64px; font-size: 18px; font-weight: 800;
-  background: linear-gradient(135deg, #7C3AED, #A855F7); border: none; border-radius: 18px; color: #fff;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
-  box-shadow: 0 8px 32px rgba(124,58,237,0.4); -webkit-tap-highlight-color: transparent; transition: all 0.15s; margin-bottom: 16px;
-}
-.start-workout-btn:active { transform: scale(0.97); }
 .resume-card {
   background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(124,58,237,0.05));
   border: 1px solid rgba(124,58,237,0.3); border-radius: 18px; padding: 18px; margin-bottom: 16px;
@@ -249,10 +250,6 @@ select.input { appearance: none; -webkit-appearance: none; }
 .settings-item-info { flex: 1; }
 .settings-item-title { font-size: 15px; font-weight: 600; }
 .settings-item-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
-.session-delete-overlay {
-  position: absolute; right: 0; top: 0; bottom: 0; width: 80px; background: var(--red);
-  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff;
-}
 .picker-group-label { font-size: 12px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; padding: 12px 0 6px; }
 .picker-item {
   display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px;
@@ -276,13 +273,6 @@ select.input { appearance: none; -webkit-appearance: none; }
   border-radius: 10px; padding: 6px 14px; font-size: 14px; font-weight: 700;
   cursor: pointer; -webkit-tap-highlight-color: transparent; white-space: nowrap;
 }
-.overflow-menu {
-  position: fixed; background: var(--elevated); border: 1px solid var(--card-border);
-  border-radius: 14px; overflow: hidden; z-index: 500; box-shadow: 0 8px 32px rgba(0,0,0,0.5); min-width: 200px;
-}
-.overflow-item { padding: 14px 16px; font-size: 14px; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.overflow-item:active { background: var(--card); }
-.overflow-item.danger { color: var(--red); }
 .celebration { position: fixed; top: 40%; left: 50%; transform: translate(-50%,-50%); z-index: 9998; pointer-events: none; font-size: 72px; animation: celebrationPop 1.4s ease forwards; }
 @keyframes celebrationPop {
   0% { opacity: 0; transform: translate(-50%,-50%) scale(0.3); }
@@ -374,7 +364,6 @@ async function seedIfEmpty() {
 
 // ===== UTILS =====
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
-const fmtTime = s => { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60; return h>0?`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; };
 const fmtW = w => w%1===0?`${w}`:`${w.toFixed(1)}`;
 const calcVol = sets => sets.reduce((a,s)=>a+(s.weight*s.reps),0);
 const greeting = () => { const h=new Date().getHours(); return h<12?'Good morning':h<18?'Good afternoon':'Good evening'; };
@@ -435,7 +424,7 @@ function AppProvider({children}) {
     await putRecord('sessions', session);
     setActiveSession(session); setActiveSets([]);
     setSessions(prev=>[session,...prev]); setTab('log');
-  }, []);
+  }, [setTab]);
 
   const finishSession = useCallback(async () => {
     if (!activeSession) return;
@@ -576,17 +565,27 @@ function SetEditorModal({set, onSave, onClose}) {
       <div class="section-label">Weight (kg)</div>
       <div class="stepper">
         <button class="stepper-btn" onClick=${()=>setWeight(w=>Math.max(0,parseFloat((w-0.5).toFixed(1))))}>−</button>
-        <div class="stepper-val">${fmtW(weight)}<span class="stepper-unit"> kg</span></div>
+        <input
+          type="number" class="stepper-input" value=${weight} step="0.5" min="0" inputmode="decimal"
+          onInput=${e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>=0)setWeight(v);}}
+          onFocus=${e=>e.target.select()}
+        />
         <button class="stepper-btn" onClick=${()=>setWeight(w=>parseFloat((w+0.5).toFixed(1)))}>+</button>
       </div>
+      <div class="stepper-unit-label">kg</div>
     </div>
     <div style="margin-bottom:24px">
       <div class="section-label">Reps</div>
       <div class="stepper">
         <button class="stepper-btn" onClick=${()=>setReps(r=>Math.max(1,r-1))}>−</button>
-        <div class="stepper-val">${reps}<span class="stepper-unit"> reps</span></div>
+        <input
+          type="number" class="stepper-input" value=${reps} step="1" min="1" inputmode="numeric"
+          onInput=${e=>{const v=parseInt(e.target.value);if(!isNaN(v)&&v>=1)setReps(v);}}
+          onFocus=${e=>e.target.select()}
+        />
         <button class="stepper-btn" onClick=${()=>setReps(r=>r+1)}>+</button>
       </div>
+      <div class="stepper-unit-label">reps</div>
     </div>
     <button class="btn btn-primary btn-full btn-lg" onClick=${()=>{onSave(weight,reps);onClose();}}>Save Set</button>
   </${Modal}>`;
@@ -664,13 +663,7 @@ function SwipeSetRow({set, onEdit, onDelete, number}) {
 
 // ===== DASHBOARD =====
 function Dashboard() {
-  const {sessions,sets,exercises,categories,activeSession,startSession,setTab} = useContext(Ctx);
-  const [timer, setTimer] = useState(0);
-  useEffect(()=>{
-    if (!activeSession) return;
-    const fn=()=>setTimer(Math.floor((Date.now()-activeSession.startTime)/1000));
-    fn(); const iv=setInterval(fn,1000); return ()=>clearInterval(iv);
-  },[activeSession]);
+  const {sessions,sets,exercises,categories,activeSession,setTab} = useContext(Ctx);
 
   const weekStart = getWeekStart();
   const weekSess = sessions.filter(s=>new Date(s.date+'T00:00:00')>=weekStart);
@@ -680,17 +673,13 @@ function Dashboard() {
   const today = new Date();
   const dateStr = today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 
-  // PRs
   const exMap = Object.fromEntries(exercises.map(e=>[e.id,e]));
   const exMax = {};
   for (const s of [...sets].sort((a,b)=>a.timestamp-b.timestamp)) {
-    if (!exMax[s.exerciseId]||s.weight>exMax[s.exerciseId].weight) {
-      exMax[s.exerciseId] = {...s};
-    }
+    if (!exMax[s.exerciseId]||s.weight>exMax[s.exerciseId].weight) exMax[s.exerciseId] = {...s};
   }
   const prs = Object.entries(exMax).map(([id,s])=>({ex:exMap[id],s})).filter(p=>p.ex&&p.s.weight>0)
     .sort((a,b)=>b.s.timestamp-a.s.timestamp).slice(0,3);
-
   const weekPRsCount = prs.filter(p=>{
     const sess = sessions.find(ss=>ss.id===p.s.sessionId);
     return sess && new Date(sess.date+'T00:00:00')>=weekStart;
@@ -699,17 +688,16 @@ function Dashboard() {
   return html`<div>
     <div class="greeting">${greeting()}, champ 💪</div>
     <div class="greeting-date">${dateStr}</div>
-    ${activeSession?html`
+    ${activeSession&&html`
       <div class="resume-card" onClick=${()=>setTab('log')}>
         <div style="font-size:28px">⚡</div>
         <div class="resume-info">
           <div class="resume-label">Active Session</div>
-          <div class="resume-title">Resume Workout</div>
-          <div class="timer-display" style="font-size:16px;margin-top:4px">${fmtTime(timer)}</div>
+          <div class="resume-title">Continue Logging</div>
         </div>
         <svg style="width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
       </div>
-    `:html`<button class="start-workout-btn" onClick=${startSession}><span style="font-size:22px">💪</span> Start Workout</button>`}
+    `}
     <div class="stats-row">
       <div class="stat-card"><div class="stat-val">${weekSess.length}</div><div class="stat-lbl">Sessions</div></div>
       <div class="stat-card"><div class="stat-val">${weekSets.length}</div><div class="stat-lbl">Total Sets</div></div>
@@ -746,18 +734,8 @@ function Dashboard() {
 // ===== LOG WORKOUT =====
 function LogWorkout() {
   const {activeSession,activeSets,addSet,updateSet,deleteSet,finishSession,exercises,categories,showToast,sessions,sets:allSets} = useContext(Ctx);
-  const [timer, setTimer] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
   const [editingSet, setEditingSet] = useState(null);
-  const [showOverflow, setShowOverflow] = useState(false);
-
-  useEffect(()=>{
-    if (!activeSession) return;
-    const fn=()=>setTimer(Math.floor((Date.now()-activeSession.startTime)/1000));
-    fn(); const iv=setInterval(fn,1000); return ()=>clearInterval(iv);
-  },[activeSession]);
-
-  if (!activeSession) return html`<div class="empty-state"><div class="empty-icon">🏋️</div><div class="empty-title">No Active Session</div><div class="empty-sub">Go to Dashboard to start a workout</div></div>`;
 
   const exInSession = [];
   const seen = new Set();
@@ -774,21 +752,7 @@ function LogWorkout() {
     await addSet(exId, last?last.weight:20, last?last.reps:10);
   };
 
-  const duplicateLast = async () => {
-    const prev = sessions.filter(s=>s.id!==activeSession.id&&s.endTime)[0];
-    if (!prev) { showToast('No previous workout','error'); setShowOverflow(false); return; }
-    const prevSets = allSets.filter(s=>s.sessionId===prev.id);
-    for (const s of prevSets) await addSet(s.exerciseId,s.weight,s.reps);
-    showToast('Last workout duplicated!'); setShowOverflow(false);
-  };
-
   return html`<div>
-    ${showOverflow&&html`<div style="position:fixed;inset:0;z-index:400" onClick=${()=>setShowOverflow(false)}>
-      <div class="overflow-menu" style="top:calc(env(safe-area-inset-top) + 56px);right:12px" onClick=${e=>e.stopPropagation()}>
-        <div class="overflow-item" onClick=${duplicateLast}>📋 Duplicate Last Workout</div>
-        <div class="overflow-item danger" onClick=${()=>{finishSession();setShowOverflow(false);}}>🏁 End Session</div>
-      </div>
-    </div>`}
     ${exInSession.length===0&&html`<div class="empty-state"><div class="empty-icon">➕</div><div class="empty-title">Add your first exercise</div><div class="empty-sub">Tap the button below to get started</div></div>`}
     ${exInSession.map(exId=>{
       const ex = exercises.find(e=>e.id===exId); if (!ex) return null;
@@ -826,24 +790,15 @@ function History() {
       const dur = Math.floor((session.endTime-session.startTime)/60000);
       const isExp = expanded[session.id];
       return html`<div class="session-card" key=${session.id}>
-        <div style="overflow:hidden;border-radius:16px">
-          <div class="session-delete-overlay" onClick=${()=>setConfirmDel(session.id)}>Delete</div>
-          <div class="session-card-header"
-            onTouchStart=${e=>{e.currentTarget._sx=e.touches[0].clientX;}}
-            onTouchEnd=${e=>{
-              const dx=e.changedTouches[0].clientX-e.currentTarget._sx;
-              if(dx<-50)e.currentTarget.style.transform='translateX(-80px)';
-              else if(dx>20){e.currentTarget.style.transform='';setExpanded(p=>({...p,[session.id]:!p[session.id]}));}
-              else setExpanded(p=>({...p,[session.id]:!p[session.id]}));
-            }}
-            onClick=${()=>setExpanded(p=>({...p,[session.id]:!p[session.id]}))}>
-            <div>
+          <div class="session-card-header" onClick=${()=>setExpanded(p=>({...p,[session.id]:!p[session.id]}))}>
+            <div style="flex:1">
               <div class="session-date">${fmtDateLabel(session.date)}</div>
               <div class="session-meta">${exIds.length} exercises · ${sts.length} sets · ${fmtW(vol)} kg · ${dur}min</div>
             </div>
+            <button class="btn btn-icon" style="background:rgba(239,68,68,0.12);color:var(--red);width:34px;height:34px;font-size:14px;border-radius:8px;flex-shrink:0;margin-right:6px"
+              onClick=${e=>{e.stopPropagation();setConfirmDel(session.id);}}>🗑️</button>
             <div class="session-chevron ${isExp?'open':''}">›</div>
           </div>
-        </div>
         ${isExp&&html`<div class="session-body">
           ${exIds.map(exId=>{
             const ex=exercises.find(e=>e.id===exId);
@@ -971,7 +926,7 @@ function Exercises() {
 
 // ===== SETTINGS =====
 function Settings({onClose}) {
-  const {exportData,importData,clearAll,showToast} = useContext(Ctx);
+  const {exportData,importData,clearAll} = useContext(Ctx);
   const [showClear, setShowClear] = useState(false);
   const [clearVal, setClearVal] = useState('');
   const fileRef = useRef(null);
@@ -1003,7 +958,7 @@ function Settings({onClose}) {
 
 // ===== BOTTOM NAV =====
 function BottomNav() {
-  const {tab,setTab,activeSession} = useContext(Ctx);
+  const {tab,setTab,activeSession,startSession} = useContext(Ctx);
   const tabs = [
     {id:'dashboard',label:'Home',icon:html`<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`},
     {id:'log',label:'Log',icon:html`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`},
@@ -1011,9 +966,13 @@ function BottomNav() {
     {id:'progress',label:'Progress',icon:html`<svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`},
     {id:'exercises',label:'Exercises',icon:html`<svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 12h11M6.5 17.5h11M3 6.5h.01M3 12h.01M3 17.5h.01"/></svg>`},
   ];
+  const handleTab = (id) => {
+    if (id === 'log' && !activeSession) startSession();
+    else setTab(id);
+  };
   return html`<nav class="bottom-nav">
     ${tabs.map(t=>html`
-      <button class="nav-tab ${tab===t.id?'active':''} ${t.id==='log'&&activeSession?'log-active':''}" key=${t.id} onClick=${()=>setTab(t.id)}>
+      <button class="nav-tab ${tab===t.id?'active':''} ${t.id==='log'&&activeSession?'log-active':''}" key=${t.id} onClick=${()=>handleTab(t.id)}>
         ${t.icon}${t.label}
       </button>`)}
   </nav>`;
@@ -1022,28 +981,13 @@ function BottomNav() {
 // ===== HEADER =====
 function Header() {
   const {tab,activeSession,finishSession} = useContext(Ctx);
-  const [timer, setTimer] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
-  const [showOverflow, setShowOverflow] = useState(false);
-  useEffect(()=>{
-    if (!activeSession||tab!=='log') return;
-    const fn=()=>setTimer(Math.floor((Date.now()-activeSession.startTime)/1000));
-    fn(); const iv=setInterval(fn,1000); return ()=>clearInterval(iv);
-  },[activeSession,tab]);
   const titles={dashboard:'IronLog',log:'Log Workout',history:'History',progress:'Progress',exercises:'Exercises'};
   return html`<header class="app-header">
     <div class="header-inner">
       <div class="header-title">${titles[tab]||'IronLog'}</div>
       ${tab==='log'&&activeSession&&html`
-        <span class="timer-display">${fmtTime(timer)}</span>
-        <button class="finish-btn" onClick=${finishSession}>Finish</button>
-        <button class="btn btn-icon" onClick=${()=>setShowOverflow(v=>!v)} style="font-size:18px;flex-shrink:0">⋮</button>
-        ${showOverflow&&html`<div style="position:fixed;inset:0;z-index:400" onClick=${()=>setShowOverflow(false)}>
-          <div class="overflow-menu" style="top:calc(env(safe-area-inset-top) + 56px);right:12px" onClick=${e=>e.stopPropagation()}>
-            <div class="overflow-item" style="color:var(--text-2);font-size:12px;padding:10px 16px 4px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Options</div>
-            <div class="overflow-item" onClick=${()=>setShowOverflow(false)}>📋 Duplicate Last Workout</div>
-          </div>
-        </div>`}
+        <button class="finish-btn" onClick=${finishSession}>Save</button>
       `}
       ${(tab==='dashboard'||tab==='exercises')&&html`<button class="btn btn-icon" onClick=${()=>setShowSettings(true)}>⚙️</button>`}
     </div>
